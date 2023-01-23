@@ -6,5 +6,6 @@ import kotlinx.serialization.Serializable
 data class Photo(
     val deviceId: Long,
     val dateTime: String,
+    val fileName: String,
     val url: String
 )

@@ -10,9 +10,10 @@ import io.ktor.util.*
 
 fun Application.configureRouting(fileHandler: FileHandler) {
     routing {
-        uploadPhotoRoute(fileHandler)  // post - BASE_URL/photo
-        getPhotoRoute(fileHandler)     // get  - BASE_URL/photo
-        getPhotosRoute(fileHandler)    // get  - BASE_URL/photos
+        uploadPhotoRoute(fileHandler)  // post      - BASE_URL/photo
+        getPhotoRoute(fileHandler)     // get       - BASE_URL/photo
+        getPhotosRoute(fileHandler)    // get       - BASE_URL/photos
+        removePhotoRoute(fileHandler)  // delete    - BASE_URL/photos
     }
 }
 
@@ -75,9 +76,28 @@ private fun Route.getPhotosRoute(fileHandler: FileHandler) {
             val from = call.request.queryParameters["from"]?.toLongOrNull()
             val to = call.request.queryParameters["to"]?.toLongOrNull()
 
-            val photos = fileHandler.getDevicePhotosNamesFromDisk(deviceId, from, to).sortedByDescending {  it.dateTime }
+            val photos = fileHandler.getDevicePhotosNamesFromDisk(deviceId, from, to).sortedByDescending { it.dateTime }
 
             call.respond(message = photos, status = HttpStatusCode.OK)
+        } catch (e: Exception) {
+            println("Error: ${e.message}")
+            call.respondText("Error: ${e.message}", status = HttpStatusCode.InternalServerError)
+        }
+    }
+}
+
+private fun Route.removePhotoRoute(fileHandler: FileHandler) {
+    delete("/photos/{fileName}") {
+        try {
+            val fileName = call.parameters["fileName"]
+            if (fileName.isNullOrEmpty()) {
+                call.respondText("Error: Wrong fileName", status = HttpStatusCode.BadRequest)
+                return@delete
+            }
+
+            fileHandler.removePhoto(fileName)
+
+            call.respondText("Ok", status = HttpStatusCode.OK)
         } catch (e: Exception) {
             println("Error: ${e.message}")
             call.respondText("Error: ${e.message}", status = HttpStatusCode.InternalServerError)

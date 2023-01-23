@@ -58,6 +58,7 @@ class FileHandler {
                 return@mapTo Photo(
                     deviceId = deviceId,
                     dateTime = dateTime,
+                    fileName = it.name,
                     url = "http://192.168.1.11:8123/photo/${deviceId}_${dateTime}.jpeg"
 //                    url = "http://127.0.0.1:8123/photo/${deviceId}_${dateTime}.jpeg"
 //                    url = "http://10.0.2.2:8123/photo/${deviceId}_${dateTime}.jpeg"
@@ -75,5 +76,17 @@ class FileHandler {
         println("savePhotoFromChannel saving in $fileName")
         val file = File(getPhotosDir(deviceId), fileName)
         channel.copyAndClose(file.writeChannel(Dispatchers.IO))
+    }
+
+    fun removePhoto(fileName: String) {
+        val file = File("$projectPath/photos/")
+            .walk()
+            .find { it.name == fileName }
+
+        if (file != null) {
+            file.delete()
+        } else {
+            throw Exception("File doesn't exists")
+        }
     }
 }
