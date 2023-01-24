@@ -13,6 +13,9 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeFormatterBuilder
 import java.time.temporal.ChronoField
+import javax.imageio.ImageIO
+import javax.imageio.ImageReader
+
 
 class FileHandler {
 
@@ -46,6 +49,22 @@ class FileHandler {
         return File(devicePhotosDir, fileName)
     }
 
+    private fun getImageSizeString(f: File): String {
+        ImageIO.createImageInputStream(f).use { input ->
+            val readers: Iterator<ImageReader> = ImageIO.getImageReaders(input)
+            if (readers.hasNext()) {
+                val reader = readers.next()
+                try {
+                    reader.input = input
+                    return "${reader.getWidth(0)}x${reader.getHeight(0)} px"
+                } finally {
+                    reader.dispose()
+                }
+            }
+        }
+        return "unknown"
+    }
+
     fun getDevicePhotosNamesFromDisk(deviceId: Long, from: Long? = null, to: Long? = null): List<Photo> {
         val devicePhotosDir = getPhotosDir(deviceId)
         val photos = mutableListOf<Photo>()
@@ -55,10 +74,13 @@ class FileHandler {
             .filter { it.name.matches(PHOTO_FILENAME_REGEX.toRegex()) }
             .mapTo(photos) {
                 val dateTime = it.name.split("_", ".")[1]
+                val size = getImageSizeString(it)
+
                 return@mapTo Photo(
                     deviceId = deviceId,
                     dateTime = dateTime,
                     fileName = it.name,
+                    size = size,
                     url = "http://192.168.1.11:8123/photo/${deviceId}_${dateTime}.jpeg"
 //                    url = "http://127.0.0.1:8123/photo/${deviceId}_${dateTime}.jpeg"
 //                    url = "http://10.0.2.2:8123/photo/${deviceId}_${dateTime}.jpeg"
