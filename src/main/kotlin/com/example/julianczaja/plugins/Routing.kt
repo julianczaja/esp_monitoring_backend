@@ -75,7 +75,6 @@ private fun Route.getPhotosRoute(fileHandler: FileHandler) {
 
             val from = call.request.queryParameters["from"]?.toLongOrNull()
             val to = call.request.queryParameters["to"]?.toLongOrNull()
-
             val photos = fileHandler.getDevicePhotosNamesFromDisk(deviceId, from, to).sortedByDescending { it.dateTime }
 
             call.respond(message = photos, status = HttpStatusCode.OK)

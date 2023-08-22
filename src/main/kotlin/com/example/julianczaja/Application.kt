@@ -1,6 +1,7 @@
 package com.example.julianczaja
 
 import com.example.julianczaja.Constants.BASE_URL
+import com.example.julianczaja.Constants.PORT
 import com.example.julianczaja.plugins.configureMonitoring
 import com.example.julianczaja.plugins.configureRouting
 import com.example.julianczaja.plugins.configureSerialization
@@ -12,7 +13,7 @@ fun main() {
     embeddedServer(
         Netty,
         host = BASE_URL,
-        port = 8123,
+        port = PORT,
         module = Application::module
     ).start(wait = true)
 }

@@ -1,6 +1,7 @@
 package com.example.julianczaja
 
 import com.example.julianczaja.Constants.PHOTO_FILENAME_REGEX
+import com.example.julianczaja.Constants.PORT
 import com.example.julianczaja.Constants.projectPath
 import com.example.julianczaja.plugins.Photo
 import io.ktor.util.cio.*
@@ -81,7 +82,9 @@ class FileHandler {
                     dateTime = dateTime,
                     fileName = it.name,
                     size = size,
-                    url = "http://192.168.1.11:8123/photo/${deviceId}_${dateTime}.jpeg"
+                    url = "http://maluch2.mikr.us:$PORT/photo/${deviceId}_${dateTime}.jpeg"
+//                    url = "http://192.168.1.11:8123/photo/${deviceId}_${dateTime}.jpeg"
+//                    url = "http://${Constants.BASE_URL}:${Constants.PORT}/photo/${deviceId}_${dateTime}.jpeg"
 //                    url = "http://127.0.0.1:8123/photo/${deviceId}_${dateTime}.jpeg"
 //                    url = "http://10.0.2.2:8123/photo/${deviceId}_${dateTime}.jpeg"
                 )
