@@ -1,15 +1,16 @@
 val ktor_version: String by project
 val logback_version: String by project
+val kotlin_version: String by project
 
 plugins {
     application
-    kotlin("jvm") version "1.8.20"
-    id("io.ktor.plugin") version "2.3.3"
-    id("org.jetbrains.kotlin.plugin.serialization") version "1.8.20"
+    kotlin("jvm") version "1.9.23"
+    id("io.ktor.plugin") version "2.3.10"
+    id("org.jetbrains.kotlin.plugin.serialization") version "1.9.23"
 }
 
 group = "com.example.julianczaja"
-version = "0.2.1"
+version = "0.2.2"
 
 
 application {
@@ -21,11 +22,12 @@ application {
 
 repositories {
     mavenCentral()
+    maven { url = uri("https://maven.pkg.jetbrains.space/public/p/ktor/eap") }
 }
 
 tasks {
     shadowJar {
-        archiveName = "esp_monitoring_$version.jar"
+        archiveFileName = "esp_monitoring_$version.jar"
         manifest {
             attributes(Pair("Main-Class", "com.example.ApplicationKt"))
             mergeServiceFiles()
