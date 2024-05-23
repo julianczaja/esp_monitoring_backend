@@ -1,5 +1,6 @@
 package com.example.julianczaja.plugins
 
+import UnknownDeviceException
 import com.example.julianczaja.FileHandler
 import io.ktor.http.*
 import io.ktor.server.application.*
@@ -78,6 +79,9 @@ private fun Route.getPhotosRoute(fileHandler: FileHandler) {
             val photos = fileHandler.getDevicePhotosNamesFromDisk(deviceId, from, to).sortedByDescending { it.dateTime }
 
             call.respond(message = photos, status = HttpStatusCode.OK)
+        } catch (e: UnknownDeviceException) {
+            call.respondText("Error: Device ${call.parameters["deviceId"]?.toLongOrNull()} not found", status = HttpStatusCode.NotFound)
+            return@get
         } catch (e: Exception) {
             println("Error: ${e.message}")
             call.respondText("Error: ${e.message}", status = HttpStatusCode.InternalServerError)
