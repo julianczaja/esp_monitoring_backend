@@ -7,6 +7,10 @@ import com.example.julianczaja.plugins.Photo
 import io.ktor.util.cio.*
 import io.ktor.utils.io.*
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
+import net.coobird.thumbnailator.Thumbnails
+import java.awt.image.BufferedImage
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Paths
@@ -36,16 +40,29 @@ class FileHandler {
 
     private fun getPhotosDir(deviceId: Long) = "$projectPath/photos/$deviceId".replace('/', File.separatorChar)
 
+    private fun getPhotosThumbnailsDir(deviceId: Long) =
+        "$projectPath/photos/$deviceId/thumbnails".replace('/', File.separatorChar)
+
     private fun getPhotosDir(deviceId: String) = "$projectPath/photos/$deviceId".replace('/', File.separatorChar)
 
-    private fun createDirForDevice(deviceId: Long) {
+    private fun createDirsForDevice(deviceId: Long) {
         val devicePhotosDir = getPhotosDir(deviceId)
+        val deviceThumbnailsPhotosDir = getPhotosThumbnailsDir(deviceId)
+
         Files.createDirectories(Paths.get(devicePhotosDir))
+        Files.createDirectories(Paths.get(deviceThumbnailsPhotosDir))
     }
 
-    fun getDevicePhotoNamesFromDisk(fileName: String): File {
+    fun getPhotoFile(fileName: String): File {
         val deviceId = fileName.split("_").first()
         val devicePhotosDir = getPhotosDir(deviceId)
+
+        return File(devicePhotosDir, fileName)
+    }
+
+    fun getPhotoThumbnailFile(fileName: String): File {
+        val deviceId = fileName.split("_").first()
+        val devicePhotosDir = getPhotosThumbnailsDir(deviceId.toLong())
 
         return File(devicePhotosDir, fileName)
     }
@@ -66,7 +83,7 @@ class FileHandler {
         return "unknown"
     }
 
-    fun getDevicePhotosNamesFromDisk(deviceId: Long, from: Long? = null, to: Long? = null): List<Photo> {
+    fun getDevicePhotosNamesFromDisk(deviceId: Long): List<Photo> {
         val devicePhotosDir = getPhotosDir(deviceId)
         val photos = mutableListOf<Photo>()
 
@@ -75,47 +92,69 @@ class FileHandler {
         }
 
         File(devicePhotosDir)
-            .walk()
-            .filter { it.name.matches(PHOTO_FILENAME_REGEX.toRegex()) }
-            .mapTo(photos) {
+            .listFiles { file -> file.isFile }
+            ?.filter { it.name.matches(PHOTO_FILENAME_REGEX.toRegex()) }
+            ?.mapTo(photos) {
                 val dateTime = it.name.split("_", ".")[1]
-                val size = getImageSizeString(it)
-
-                return@mapTo Photo(
+                Photo(
                     deviceId = deviceId,
                     dateTime = dateTime,
                     fileName = it.name,
-                    size = size,
+                    size = getImageSizeString(it),
+                    url = "http://192.168.1.57:8123/photo/${deviceId}_${dateTime}.jpeg",
+                    thumbnailUrl = "http://192.168.1.57:8123/photoThumbnail/${deviceId}_${dateTime}.jpeg"
                     // url = "http://maluch2.mikr.us:$PORT/photo/${deviceId}_${dateTime}.jpeg"
-                     url = "http://192.168.1.57:8123/photo/${deviceId}_${dateTime}.jpeg"
-                    // url = "http://${Constants.BASE_URL}:${Constants.PORT}/photo/${deviceId}_${dateTime}.jpeg"
-//                     url = "http://127.0.0.1:8123/photo/${deviceId}_${dateTime}.jpeg"
-//                    url = "http://10.0.2.2:8123/photo/${deviceId}_${dateTime}.jpeg"
+                    // thumbnailUrl = "http://maluch2.mikr.us:$PORT/photoThumbnail/${deviceId}_${dateTime}.jpeg"
                 )
             }
 
         return photos
     }
 
-    suspend fun savePhotoFromChannel(deviceId: Long, channel: ByteReadChannel) {
-        println("savePhotoFromChannel deviceId=$deviceId")
-        createDirForDevice(deviceId)
+    suspend fun savePhotoFromChannel(deviceId: Long, channel: ByteReadChannel) = withContext(Dispatchers.IO) {
+        createDirsForDevice(deviceId)
 
         val fileName = getPhotoName(deviceId)
-        println("savePhotoFromChannel saving in $fileName")
-        val file = File(getPhotosDir(deviceId), fileName)
-        channel.copyAndClose(file.writeChannel(Dispatchers.IO))
+
+        val originalDir = getPhotosDir(deviceId)
+        val originalFile = File(originalDir, fileName)
+        channel.copyAndClose(originalFile.writeChannel(Dispatchers.IO))
+
+        val thumbnailDir = getPhotosThumbnailsDir(deviceId)
+        createAndSaveThumbnail(originalFile, thumbnailDir, fileName)
     }
 
-    fun removePhoto(fileName: String) {
-        val file = File("$projectPath/photos/")
-            .walk()
-            .find { it.name == fileName }
+    private suspend fun createAndSaveThumbnail(
+        fromFile: File,
+        thumbnailsDir: String,
+        fileName: String,
+        sizePx: Int = 200
+    ) = withContext(Dispatchers.IO) {
+        val thumbnailImage: BufferedImage = Thumbnails.of(fromFile)
+            .size(sizePx, sizePx)
+            .asBufferedImage()
+        val thumbnailFile = File(thumbnailsDir, fileName)
 
-        if (file != null) {
-            file.delete()
-        } else {
-            throw Exception("File doesn't exists")
+        ImageIO.write(thumbnailImage, "jpeg", thumbnailFile)
+    }
+
+    fun removePhoto(fileName: String) = File("$projectPath/photos/")
+        .walk()
+        .filter { it.name == fileName }
+        .forEach { it.delete() }
+
+    fun createMissingThumbnails() {
+        File("$projectPath/photos/").listFiles()?.forEach { dir ->
+            if (!dir.isDirectory) return@forEach
+
+            val thumbnailPath = Files.createDirectories(Paths.get("${dir.path}/thumbnails"))
+
+            dir.listFiles()?.forEach { file ->
+                if (file.isFile) {
+                    println(file.name)
+                    runBlocking { createAndSaveThumbnail(file, thumbnailPath.toString(), file.name) }
+                }
+            }
         }
     }
 }

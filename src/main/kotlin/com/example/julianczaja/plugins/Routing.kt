@@ -2,6 +2,7 @@ package com.example.julianczaja.plugins
 
 import UnknownDeviceException
 import com.example.julianczaja.FileHandler
+import com.example.julianczaja.addFileNameContentDescriptionHeader
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.request.*
@@ -11,10 +12,11 @@ import io.ktor.util.*
 
 fun Application.configureRouting(fileHandler: FileHandler) {
     routing {
-        uploadPhotoRoute(fileHandler)  // post      - BASE_URL/photo
-        getPhotoRoute(fileHandler)     // get       - BASE_URL/photo
-        getPhotosRoute(fileHandler)    // get       - BASE_URL/photos
-        removePhotoRoute(fileHandler)  // delete    - BASE_URL/photos
+        uploadPhotoRoute(fileHandler)       // post      - BASE_URL/photo
+        getPhotoRoute(fileHandler)          // get       - BASE_URL/photo
+        getPhotoThumbnailRoute(fileHandler) // get       - BASE_URL/photoThumbnail
+        getPhotosRoute(fileHandler)         // get       - BASE_URL/photos
+        removePhotoRoute(fileHandler)       // delete    - BASE_URL/photos
     }
 }
 
@@ -24,7 +26,7 @@ fun Route.uploadPhotoRoute(fileHandler: FileHandler) {
             println("HEADERS = ${call.request.headers.flattenEntries()}")
             val deviceId = call.parameters["deviceId"]?.toLongOrNull()
             if (deviceId == null) {
-                call.respondText("Error: Wrong deviceId", status = HttpStatusCode.BadRequest)
+                call.respondText(text = "Error: Wrong deviceId", status = HttpStatusCode.BadRequest)
                 return@post
             }
 
@@ -33,7 +35,7 @@ fun Route.uploadPhotoRoute(fileHandler: FileHandler) {
             call.respondText("Ok", status = HttpStatusCode.OK)
         } catch (e: Exception) {
             println("Error: ${e.message}")
-            call.respondText("Error: ${e.message}", status = HttpStatusCode.InternalServerError)
+            call.respondText(text = "Error: ${e.message}", status = HttpStatusCode.InternalServerError)
         }
     }
 }
@@ -43,23 +45,43 @@ fun Route.getPhotoRoute(fileHandler: FileHandler) {
         try {
             val fileName = call.parameters["filename"]
             if (fileName == null) {
-                call.respondText("Error: Wrong filename", status = HttpStatusCode.BadRequest)
+                call.respondText(text = "Error: Wrong filename", status = HttpStatusCode.BadRequest)
                 return@get
             }
 
-            val photoFile = fileHandler.getDevicePhotoNamesFromDisk(fileName)
+            val photoFile = fileHandler.getPhotoFile(fileName)
             if (!photoFile.exists()) {
-                call.respondText("Error: file not exists", status = HttpStatusCode.BadRequest)
+                call.respondText(text = "Error: file not exists", status = HttpStatusCode.BadRequest)
             }
 
-            call.response.header(
-                name = HttpHeaders.ContentDisposition,
-                value = ContentDisposition.Attachment.withParameter(ContentDisposition.Parameters.FileName, fileName).toString()
-            )
+            call.response.addFileNameContentDescriptionHeader(fileName)
             call.respondFile(file = photoFile)
         } catch (e: Exception) {
             println("Error: ${e.message}")
-            call.respondText("Error: ${e.message}", status = HttpStatusCode.InternalServerError)
+            call.respondText(text = "Error: ${e.message}", status = HttpStatusCode.InternalServerError)
+        }
+    }
+}
+
+fun Route.getPhotoThumbnailRoute(fileHandler: FileHandler) {
+    get("/photoThumbnail/{filename}") {
+        try {
+            val fileName = call.parameters["filename"]
+            if (fileName == null) {
+                call.respondText(text = "Error: Wrong filename", status = HttpStatusCode.BadRequest)
+                return@get
+            }
+
+            val photoFile = fileHandler.getPhotoThumbnailFile(fileName)
+            if (!photoFile.exists()) {
+                call.respondText(text = "Error: file not exists", status = HttpStatusCode.BadRequest)
+            }
+
+            call.response.addFileNameContentDescriptionHeader(fileName)
+            call.respondFile(file = photoFile)
+        } catch (e: Exception) {
+            println("Error: ${e.message}")
+            call.respondText(text = "Error: ${e.message}", status = HttpStatusCode.InternalServerError)
         }
     }
 }
@@ -70,21 +92,22 @@ private fun Route.getPhotosRoute(fileHandler: FileHandler) {
             println("HEADERS = ${call.request.headers.flattenEntries()}")
             val deviceId = call.parameters["deviceId"]?.toLongOrNull()
             if (deviceId == null) {
-                call.respondText("Error: Wrong deviceId", status = HttpStatusCode.BadRequest)
+                call.respondText(text = "Error: Wrong deviceId", status = HttpStatusCode.BadRequest)
                 return@get
             }
 
-            val from = call.request.queryParameters["from"]?.toLongOrNull()
-            val to = call.request.queryParameters["to"]?.toLongOrNull()
-            val photos = fileHandler.getDevicePhotosNamesFromDisk(deviceId, from, to).sortedByDescending { it.dateTime }
+            val photos = fileHandler.getDevicePhotosNamesFromDisk(deviceId).sortedByDescending { it.dateTime }
 
             call.respond(message = photos, status = HttpStatusCode.OK)
         } catch (e: UnknownDeviceException) {
-            call.respondText("Error: Device ${call.parameters["deviceId"]?.toLongOrNull()} not found", status = HttpStatusCode.NotFound)
+            call.respondText(
+                text = "Error: Device ${call.parameters["deviceId"]?.toLongOrNull()} not found",
+                status = HttpStatusCode.NotFound
+            )
             return@get
         } catch (e: Exception) {
             println("Error: ${e.message}")
-            call.respondText("Error: ${e.message}", status = HttpStatusCode.InternalServerError)
+            call.respondText(text = "Error: ${e.message}", status = HttpStatusCode.InternalServerError)
         }
     }
 }
@@ -94,16 +117,16 @@ private fun Route.removePhotoRoute(fileHandler: FileHandler) {
         try {
             val fileName = call.parameters["fileName"]
             if (fileName.isNullOrEmpty()) {
-                call.respondText("Error: Wrong fileName", status = HttpStatusCode.BadRequest)
+                call.respondText(text = "Error: Wrong fileName", status = HttpStatusCode.BadRequest)
                 return@delete
             }
 
             fileHandler.removePhoto(fileName)
 
-            call.respondText("Ok", status = HttpStatusCode.OK)
+            call.respondText(text = "Ok", status = HttpStatusCode.OK)
         } catch (e: Exception) {
             println("Error: ${e.message}")
-            call.respondText("Error: ${e.message}", status = HttpStatusCode.InternalServerError)
+            call.respondText(text = "Error: ${e.message}", status = HttpStatusCode.InternalServerError)
         }
     }
 }

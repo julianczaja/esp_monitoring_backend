@@ -8,5 +8,6 @@ data class Photo(
     val dateTime: String,
     val fileName: String,
     val size: String,
-    val url: String
+    val url: String,
+    val thumbnailUrl: String
 )

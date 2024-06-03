@@ -4,13 +4,13 @@ val kotlin_version: String by project
 
 plugins {
     application
-    kotlin("jvm") version "1.9.23"
-    id("io.ktor.plugin") version "2.3.10"
-    id("org.jetbrains.kotlin.plugin.serialization") version "1.9.23"
+    kotlin("jvm") version "1.9.24"
+    id("io.ktor.plugin") version "2.3.11"
+    id("org.jetbrains.kotlin.plugin.serialization") version "1.9.24"
 }
 
 group = "com.example.julianczaja"
-version = "0.2.2"
+version = "0.3.0"
 
 
 application {
@@ -43,4 +43,6 @@ dependencies {
     implementation("io.ktor:ktor-server-default-headers-jvm:$ktor_version")
     implementation("io.ktor:ktor-server-netty-jvm:$ktor_version")
     implementation("ch.qos.logback:logback-classic:$logback_version")
+
+    implementation("net.coobird:thumbnailator:0.4.20")
 }
