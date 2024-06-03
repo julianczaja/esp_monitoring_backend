@@ -8,3 +8,5 @@ fun ApplicationResponse.addFileNameContentDescriptionHeader(fileName: String) = 
     name = HttpHeaders.ContentDisposition,
     value = ContentDisposition.Attachment.withParameter(ContentDisposition.Parameters.FileName, fileName).toString()
 )
+
+fun Long.bytesToMegaBytes(): Float = this / (1024f * 1024f)

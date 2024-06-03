@@ -3,6 +3,7 @@ package com.example.julianczaja
 import UnknownDeviceException
 import com.example.julianczaja.Constants.PHOTO_FILENAME_REGEX
 import com.example.julianczaja.Constants.projectPath
+import com.example.julianczaja.plugins.DeviceInfo
 import com.example.julianczaja.plugins.Photo
 import io.ktor.util.cio.*
 import io.ktor.utils.io.*
@@ -156,5 +157,41 @@ class FileHandler {
                 }
             }
         }
+    }
+
+    fun getDeviceInfo(deviceId: Long): DeviceInfo {
+        val photosDir = File(getPhotosDir(deviceId))
+
+        val averageSumCount = 10
+        var usedSpace = 0L
+        var lastPhotoSize = 0L
+        var averagePhotoSize = 0L
+        var photosCount = 0
+
+        photosDir.listFiles()
+            ?.filter { it.isFile }
+            ?.also { files ->
+                usedSpace = files.sumOf { it.length() }
+                photosCount = files.size
+
+                files
+                    .sortedByDescending { it.lastModified() }
+                    .take(averageSumCount)
+                    .also { lastPhotos ->
+                        lastPhotoSize = lastPhotos.firstOrNull()?.length() ?: 0L
+                        averagePhotoSize = lastPhotos.sumOf { it.length() } / averageSumCount
+                    }
+            }
+
+        val freeSpaceMb = Constants.MAX_SPACE_MB - usedSpace.bytesToMegaBytes()
+
+        return DeviceInfo(
+            deviceId = deviceId,
+            freeSpaceMb = freeSpaceMb,
+            usedSpaceMb = usedSpace.bytesToMegaBytes(),
+            lastPhotoSizeMb = lastPhotoSize.bytesToMegaBytes(),
+            averagePhotoSizeMb = averagePhotoSize.bytesToMegaBytes(),
+            photosCount = photosCount
+        )
     }
 }

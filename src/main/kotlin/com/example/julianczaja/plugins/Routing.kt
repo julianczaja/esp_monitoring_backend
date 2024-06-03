@@ -17,6 +17,7 @@ fun Application.configureRouting(fileHandler: FileHandler) {
         getPhotoThumbnailRoute(fileHandler) // get       - BASE_URL/photoThumbnail
         getPhotosRoute(fileHandler)         // get       - BASE_URL/photos
         removePhotoRoute(fileHandler)       // delete    - BASE_URL/photos
+        getDeviceInfoRoute(fileHandler)     // get       - BASE_URL/device
     }
 }
 
@@ -124,6 +125,24 @@ private fun Route.removePhotoRoute(fileHandler: FileHandler) {
             fileHandler.removePhoto(fileName)
 
             call.respondText(text = "Ok", status = HttpStatusCode.OK)
+        } catch (e: Exception) {
+            println("Error: ${e.message}")
+            call.respondText(text = "Error: ${e.message}", status = HttpStatusCode.InternalServerError)
+        }
+    }
+}
+
+fun Route.getDeviceInfoRoute(fileHandler: FileHandler) {
+    get("/device/{deviceId}") {
+        try {
+            val deviceId = call.parameters["deviceId"]?.toLongOrNull()
+            if (deviceId == null) {
+                call.respondText(text = "Error: Wrong deviceId", status = HttpStatusCode.BadRequest)
+                return@get
+            }
+
+            val deviceInfo = fileHandler.getDeviceInfo(deviceId)
+            call.respond(message = deviceInfo, status = HttpStatusCode.OK)
         } catch (e: Exception) {
             println("Error: ${e.message}")
             call.respondText(text = "Error: ${e.message}", status = HttpStatusCode.InternalServerError)
