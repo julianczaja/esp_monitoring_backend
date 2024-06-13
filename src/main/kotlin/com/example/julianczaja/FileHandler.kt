@@ -16,6 +16,7 @@ import java.io.File
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.time.LocalDateTime
+import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeFormatterBuilder
 import java.time.temporal.ChronoField
@@ -159,6 +160,14 @@ class FileHandler {
         }
     }
 
+    private fun getTimestampFromPhotoFileName(fileName: String): Long? = try {
+        val stringDate = fileName.split("_")[1].substring(0, 17)
+        LocalDateTime.parse(stringDate, formatter).toInstant(ZoneOffset.UTC).toEpochMilli()
+    } catch (e: Exception) {
+        println("getTimestampFromPhotoFileName error: can't convert '$fileName'")
+        null
+    }
+
     fun getDeviceInfo(deviceId: Long): DeviceInfo {
         val photosDir = File(getPhotosDir(deviceId))
 
@@ -167,15 +176,20 @@ class FileHandler {
         var lastPhotoSize = 0L
         var averagePhotoSize = 0L
         var photosCount = 0
+        var newestPhotoTimestamp: Long? = null
+        var oldestPhotoTimestamp: Long? = null
 
         photosDir.listFiles()
-            ?.filter { it.isFile }
+            ?.filter { it.isFile && it.name.matches(PHOTO_FILENAME_REGEX.toRegex()) }
             ?.also { files ->
                 usedSpace = files.sumOf { it.length() }
                 photosCount = files.size
-
                 files
-                    .sortedByDescending { it.lastModified() }
+                    .sortedByDescending { it.name }
+                    .also { sorted ->
+                        newestPhotoTimestamp = getTimestampFromPhotoFileName(sorted.firstOrNull()?.name ?: "")
+                        oldestPhotoTimestamp = getTimestampFromPhotoFileName(sorted.lastOrNull()?.name ?: "")
+                    }
                     .take(averageSumCount)
                     .also { lastPhotos ->
                         lastPhotoSize = lastPhotos.firstOrNull()?.length() ?: 0L
@@ -189,9 +203,12 @@ class FileHandler {
             deviceId = deviceId,
             freeSpaceMb = freeSpaceMb,
             usedSpaceMb = usedSpace.bytesToMegaBytes(),
+            spaceLimitMb = Constants.MAX_SPACE_MB,
             lastPhotoSizeMb = lastPhotoSize.bytesToMegaBytes(),
             averagePhotoSizeMb = averagePhotoSize.bytesToMegaBytes(),
-            photosCount = photosCount
+            photosCount = photosCount,
+            newestPhotoTimestamp = newestPhotoTimestamp,
+            oldestPhotoTimestamp = oldestPhotoTimestamp
         )
     }
 }
