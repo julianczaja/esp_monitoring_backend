@@ -1,11 +1,23 @@
 <configuration>
-    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+
+    <timestamp key="bySecond" datePattern="yyyy-MM-dd_HH-mm-ss"/>
+
+    <appender name="FILE" class="ch.qos.logback.core.FileAppender">
+        <file>logs/${bySecond}.log</file>
+        <append>true</append>
         <encoder>
-            <pattern>\n--------- %d{YYYY-MM-dd HH:mm:ss.SSS} - %msg%n</pattern>
+            <pattern>%d{YYYY-MM-dd HH:mm:ss} [ %level ]\n%msg%n</pattern>
         </encoder>
     </appender>
-    <root level="trace">
+
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{YYYY-MM-dd HH:mm:ss} [ %level ]\n%msg%n</pattern>
+        </encoder>
+    </appender>
+    <root level="debug">
         <appender-ref ref="STDOUT"/>
+        <appender-ref ref="FILE"/>
     </root>
-    <logger name="io.netty" level="INFO"/>
+    <logger name="io.netty" level="DEBUG"/>
 </configuration>

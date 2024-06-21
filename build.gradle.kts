@@ -5,12 +5,12 @@ val kotlin_version: String by project
 plugins {
     application
     kotlin("jvm") version "1.9.24"
-    id("io.ktor.plugin") version "2.3.11"
+    id("io.ktor.plugin") version "2.3.12"
     id("org.jetbrains.kotlin.plugin.serialization") version "1.9.24"
 }
 
 group = "com.example.julianczaja"
-version = "0.3.0"
+version = "0.3.1"
 
 
 application {

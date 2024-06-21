@@ -2,7 +2,7 @@ package com.example.julianczaja
 
 import com.example.julianczaja.Constants.BASE_URL
 import com.example.julianczaja.Constants.PORT
-import com.example.julianczaja.plugins.configureMonitoring
+import com.example.julianczaja.plugins.configureLogging
 import com.example.julianczaja.plugins.configureRouting
 import com.example.julianczaja.plugins.configureSerialization
 import io.ktor.server.application.*
@@ -20,8 +20,10 @@ fun main() {
 
 fun Application.module() {
     val fileHandler = FileHandler()
+//    fileHandler.createMissingThumbnails()
+//    enableLogResponseBody(sendPipeline)
 
     configureSerialization()
-    configureMonitoring()
+    configureLogging()
     configureRouting(fileHandler)
 }

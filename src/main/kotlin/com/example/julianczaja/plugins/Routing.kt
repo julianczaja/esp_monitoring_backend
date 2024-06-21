@@ -8,7 +8,6 @@ import io.ktor.server.application.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import io.ktor.util.*
 
 fun Application.configureRouting(fileHandler: FileHandler) {
     routing {
@@ -24,7 +23,6 @@ fun Application.configureRouting(fileHandler: FileHandler) {
 fun Route.uploadPhotoRoute(fileHandler: FileHandler) {
     post("/photo/{deviceId}") {
         try {
-            println("HEADERS = ${call.request.headers.flattenEntries()}")
             val deviceId = call.parameters["deviceId"]?.toLongOrNull()
             if (deviceId == null) {
                 call.respondText(text = "Error: Wrong deviceId", status = HttpStatusCode.BadRequest)
@@ -35,7 +33,7 @@ fun Route.uploadPhotoRoute(fileHandler: FileHandler) {
 
             call.respondText("Ok", status = HttpStatusCode.OK)
         } catch (e: Exception) {
-            println("Error: ${e.message}")
+            application.log.error("uploadPhotoRoute", e)
             call.respondText(text = "Error: ${e.message}", status = HttpStatusCode.InternalServerError)
         }
     }
@@ -58,7 +56,7 @@ fun Route.getPhotoRoute(fileHandler: FileHandler) {
             call.response.addFileNameContentDescriptionHeader(fileName)
             call.respondFile(file = photoFile)
         } catch (e: Exception) {
-            println("Error: ${e.message}")
+            application.log.error("getPhotoRoute", e)
             call.respondText(text = "Error: ${e.message}", status = HttpStatusCode.InternalServerError)
         }
     }
@@ -81,7 +79,7 @@ fun Route.getPhotoThumbnailRoute(fileHandler: FileHandler) {
             call.response.addFileNameContentDescriptionHeader(fileName)
             call.respondFile(file = photoFile)
         } catch (e: Exception) {
-            println("Error: ${e.message}")
+            application.log.error("getPhotoThumbnailRoute", e)
             call.respondText(text = "Error: ${e.message}", status = HttpStatusCode.InternalServerError)
         }
     }
@@ -90,7 +88,6 @@ fun Route.getPhotoThumbnailRoute(fileHandler: FileHandler) {
 private fun Route.getPhotosRoute(fileHandler: FileHandler) {
     get("/photos/{deviceId}") {
         try {
-            println("HEADERS = ${call.request.headers.flattenEntries()}")
             val deviceId = call.parameters["deviceId"]?.toLongOrNull()
             if (deviceId == null) {
                 call.respondText(text = "Error: Wrong deviceId", status = HttpStatusCode.BadRequest)
@@ -107,7 +104,7 @@ private fun Route.getPhotosRoute(fileHandler: FileHandler) {
             )
             return@get
         } catch (e: Exception) {
-            println("Error: ${e.message}")
+            application.log.error("getPhotosRoute", e)
             call.respondText(text = "Error: ${e.message}", status = HttpStatusCode.InternalServerError)
         }
     }
@@ -126,13 +123,13 @@ private fun Route.removePhotoRoute(fileHandler: FileHandler) {
 
             call.respondText(text = "Ok", status = HttpStatusCode.OK)
         } catch (e: Exception) {
-            println("Error: ${e.message}")
+            application.log.error("removePhotoRoute", e)
             call.respondText(text = "Error: ${e.message}", status = HttpStatusCode.InternalServerError)
         }
     }
 }
 
-fun Route.getDeviceInfoRoute(fileHandler: FileHandler) {
+private fun Route.getDeviceInfoRoute(fileHandler: FileHandler) {
     get("/device/{deviceId}") {
         try {
             val deviceId = call.parameters["deviceId"]?.toLongOrNull()
@@ -144,7 +141,7 @@ fun Route.getDeviceInfoRoute(fileHandler: FileHandler) {
             val deviceInfo = fileHandler.getDeviceInfo(deviceId)
             call.respond(message = deviceInfo, status = HttpStatusCode.OK)
         } catch (e: Exception) {
-            println("Error: ${e.message}")
+            application.log.error("getDeviceInfoRoute", e)
             call.respondText(text = "Error: ${e.message}", status = HttpStatusCode.InternalServerError)
         }
     }

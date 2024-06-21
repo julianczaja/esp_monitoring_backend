@@ -153,7 +153,6 @@ class FileHandler {
 
             dir.listFiles()?.forEach { file ->
                 if (file.isFile) {
-                    println(file.name)
                     runBlocking { createAndSaveThumbnail(file, thumbnailPath.toString(), file.name) }
                 }
             }
