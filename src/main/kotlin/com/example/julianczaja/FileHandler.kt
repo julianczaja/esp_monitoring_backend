@@ -1,6 +1,5 @@
 package com.example.julianczaja
 
-import UnknownDeviceException
 import com.example.julianczaja.Constants.PHOTO_FILENAME_REGEX
 import com.example.julianczaja.Constants.projectPath
 import com.example.julianczaja.plugins.DeviceInfo
@@ -15,62 +14,46 @@ import java.awt.image.BufferedImage
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Paths
-import java.time.LocalDateTime
+import java.time.LocalDate
 import java.time.ZoneOffset
-import java.time.format.DateTimeFormatter
-import java.time.format.DateTimeFormatterBuilder
-import java.time.temporal.ChronoField
 import javax.imageio.ImageIO
 import javax.imageio.ImageReader
 
 
 class FileHandler {
 
-    private val formatter: DateTimeFormatter = DateTimeFormatterBuilder()
-        .appendValue(ChronoField.YEAR_OF_ERA, 4)
-        .appendValue(ChronoField.MONTH_OF_YEAR, 2)
-        .appendValue(ChronoField.DAY_OF_MONTH, 2)
-        .appendValue(ChronoField.HOUR_OF_DAY, 2)
-        .appendValue(ChronoField.MINUTE_OF_HOUR, 2)
-        .appendValue(ChronoField.SECOND_OF_MINUTE, 2)
-        .appendValue(ChronoField.MILLI_OF_SECOND, 3)
-        .toFormatter()
+    private val photoFileNameRegex = PHOTO_FILENAME_REGEX.toRegex()
 
-    private fun getCurrentDateTimeString(): String = formatter.format(LocalDateTime.now())
+    private val allDevicesPath = "$projectPath/photos"
 
-    private fun getPhotoName(deviceId: Long) = "${deviceId}_${getCurrentDateTimeString()}.jpeg"
+    private fun getPhotoName(deviceId: Long) = "${deviceId}_$currentDateTimeString.jpeg"
 
-    private fun getPhotosDir(deviceId: Long) = "$projectPath/photos/$deviceId".replace('/', File.separatorChar)
+    private fun getDeviceDir(deviceId: Long) = "$allDevicesPath/$deviceId".replaceSeparators()
 
-    private fun getPhotosThumbnailsDir(deviceId: Long) =
-        "$projectPath/photos/$deviceId/thumbnails".replace('/', File.separatorChar)
+    private fun getPhotosDir(deviceId: Long, date: String) =
+        "$allDevicesPath/$deviceId/$date".replaceSeparators()
 
-    private fun getPhotosDir(deviceId: String) = "$projectPath/photos/$deviceId".replace('/', File.separatorChar)
+    private fun getPhotosThumbnailsDir(deviceId: Long, date: String) =
+        "$allDevicesPath/$deviceId/$date/thumbnails".replaceSeparators()
 
-    private fun createDirsForDevice(deviceId: Long) {
-        val devicePhotosDir = getPhotosDir(deviceId)
-        val deviceThumbnailsPhotosDir = getPhotosThumbnailsDir(deviceId)
+    fun getPhotoFile(fileName: DeviceFileName): File {
+        val devicePhotosDateDir = getPhotosDir(fileName.deviceId, fileName.date.toDefaultString())
 
-        Files.createDirectories(Paths.get(devicePhotosDir))
-        Files.createDirectories(Paths.get(deviceThumbnailsPhotosDir))
+        return File(devicePhotosDateDir, fileName.toString())
     }
 
-    fun getPhotoFile(fileName: String): File {
-        val deviceId = fileName.split("_").first()
-        val devicePhotosDir = getPhotosDir(deviceId)
+    fun getPhotoThumbnailFile(fileName: DeviceFileName): File {
+        val devicePhotosDateDir = getPhotosThumbnailsDir(fileName.deviceId, fileName.date.toDefaultString())
 
-        return File(devicePhotosDir, fileName)
+        return File(devicePhotosDateDir, fileName.toString())
     }
 
-    fun getPhotoThumbnailFile(fileName: String): File {
-        val deviceId = fileName.split("_").first()
-        val devicePhotosDir = getPhotosThumbnailsDir(deviceId.toLong())
+    private fun getPhotoUrl(fileName: String) = "${Configuration.fullUrl}/photo/$fileName"
 
-        return File(devicePhotosDir, fileName)
-    }
+    private fun getPhotoThumbnailUrl(fileName: String) = "${Configuration.fullUrl}/photo_thumbnail/$fileName"
 
-    private fun getImageSizeString(f: File): String {
-        ImageIO.createImageInputStream(f).use { input ->
+    private fun getImageSizeString(file: File): String {
+        ImageIO.createImageInputStream(file).use { input ->
             val readers: Iterator<ImageReader> = ImageIO.getImageReaders(input)
             if (readers.hasNext()) {
                 val reader = readers.next()
@@ -85,52 +68,78 @@ class FileHandler {
         return "unknown"
     }
 
-    fun getDevicePhotosNamesFromDisk(deviceId: Long): List<Photo> {
-        val devicePhotosDir = getPhotosDir(deviceId)
-        val photos = mutableListOf<Photo>()
+    fun getDevicePhotosDatesFromDisk(deviceId: Long): List<String> {
+        val deviceDir = getDeviceDir(deviceId)
 
-        if (!File(devicePhotosDir).exists()) {
+        if (!File(deviceDir).exists()) {
             throw UnknownDeviceException()
         }
 
-        File(devicePhotosDir)
-            .listFiles { file -> file.isFile }
-            ?.filter { it.name.matches(PHOTO_FILENAME_REGEX.toRegex()) }
-            ?.mapTo(photos) {
-                val dateTime = it.name.split("_", ".")[1]
-                Photo(
-                    deviceId = deviceId,
-                    dateTime = dateTime,
-                    fileName = it.name,
-                    size = getImageSizeString(it),
-                    url = "http://192.168.1.57:8123/photo/${deviceId}_${dateTime}.jpeg",
-                    thumbnailUrl = "http://192.168.1.57:8123/photoThumbnail/${deviceId}_${dateTime}.jpeg"
-                    // url = "http://maluch2.mikr.us:$PORT/photo/${deviceId}_${dateTime}.jpeg"
-                    // thumbnailUrl = "http://maluch2.mikr.us:$PORT/photoThumbnail/${deviceId}_${dateTime}.jpeg"
-                )
+        return File(deviceDir).listPhotoDateDirs()
+            ?.map { it.name }
+            ?.sortedDescending()
+            ?: emptyList()
+    }
+
+    fun getDevicePhotosForDateFromDisk(deviceId: Long, date: LocalDate): List<Photo> {
+        val deviceDir = getDeviceDir(deviceId)
+
+        if (!File(deviceDir).exists()) {
+            throw UnknownDeviceException()
+        }
+
+        val devicePhotosDateDir = File(deviceDir, date.toDefaultString())
+
+        return devicePhotosDateDir.listPhotoFiles()
+            ?.sortedByDescending { it.name }
+            ?.map { it.toPhoto() }
+            ?: emptyList()
+    }
+
+    fun getDeviceLastPhotoFromDisk(deviceId: Long): Photo? {
+        val deviceDir = File(getDeviceDir(deviceId))
+
+        if (!deviceDir.exists()) {
+            throw UnknownDeviceException()
+        }
+
+        deviceDir.listPhotoDateDirs()
+            ?.sortedByDescending { it.name }
+            ?.first()
+            ?.let { newestDir ->
+                newestDir.listPhotoFiles()
+                    ?.sortedByDescending { it.name }
+                    ?.firstOrNull()
+                    ?.toPhoto()
+                    ?.let { photo -> return photo }
             }
 
-        return photos
+        return null
     }
 
     suspend fun savePhotoFromChannel(deviceId: Long, channel: ByteReadChannel) = withContext(Dispatchers.IO) {
-        createDirsForDevice(deviceId)
-
         val fileName = getPhotoName(deviceId)
+        val deviceFileName = DeviceFileName.fromStringOrNull(fileName) ?: throw Exception("Can't parse $fileName")
 
-        val originalDir = getPhotosDir(deviceId)
-        val originalFile = File(originalDir, fileName)
-        channel.copyAndClose(originalFile.writeChannel(Dispatchers.IO))
+        val photosDir = getPhotosDir(deviceId, deviceFileName.date.toDefaultString())
+        Files.createDirectories(Paths.get(photosDir))
+        val photoFile = File(photosDir, fileName)
+        channel.copyAndClose(photoFile.writeChannel(Dispatchers.IO))
 
-        val thumbnailDir = getPhotosThumbnailsDir(deviceId)
-        createAndSaveThumbnail(originalFile, thumbnailDir, fileName)
+        val thumbnailsDir = getPhotosThumbnailsDir(deviceId, deviceFileName.date.toDefaultString())
+        Files.createDirectories(Paths.get(thumbnailsDir))
+        createAndSaveThumbnail(
+            fromFile = photoFile,
+            thumbnailsDir = thumbnailsDir,
+            fileName = fileName
+        )
     }
 
     private suspend fun createAndSaveThumbnail(
         fromFile: File,
         thumbnailsDir: String,
         fileName: String,
-        sizePx: Int = 200
+        sizePx: Int = Constants.THUMBNAIL_SIZE_PX
     ) = withContext(Dispatchers.IO) {
         val thumbnailImage: BufferedImage = Thumbnails.of(fromFile)
             .size(sizePx, sizePx)
@@ -140,13 +149,83 @@ class FileHandler {
         ImageIO.write(thumbnailImage, "jpeg", thumbnailFile)
     }
 
-    fun removePhoto(fileName: String) = File("$projectPath/photos/")
-        .walk()
-        .filter { it.name == fileName }
-        .forEach { it.delete() }
+    fun removePhoto(fileName: DeviceFileName) {
+        val deviceDir = File(getDeviceDir(fileName.deviceId))
+
+        deviceDir.listPhotoDateDirs()
+            ?.first { it.name == fileName.date.toDefaultString() }
+            ?.also { photoDateDir ->
+                photoDateDir
+                    .walk()
+                    .filter { it.name == fileName.toString() }
+                    .forEach { it.delete() }
+            }
+    }
+
+    fun getDeviceInfo(deviceId: Long): DeviceInfo {
+        val deviceDir = File(getDeviceDir(deviceId))
+
+        val averageSumCount = 10
+        var usedSpace = 0L
+        var lastPhotoSize = 0L
+        var averagePhotoSize = 0L
+        var photosCount = 0
+        var newestPhotoTimestamp: Long? = null
+        var oldestPhotoTimestamp: Long? = null
+
+        deviceDir.listPhotoDateDirs()
+            ?.sortedByDescending { it.name }
+            ?.also { dirs ->
+                val newestDir = dirs.first()
+                val oldestDir = dirs.last()
+
+                newestDir.listPhotoFiles()
+                    ?.sortedByDescending { it.name }
+                    ?.also { sorted ->
+                        sorted.firstOrNull()?.let { newestPhotoFile ->
+                            newestPhotoTimestamp = getTimestampFromPhotoFileName(newestPhotoFile.name)
+                        }
+                    }
+                    ?.also { sorted ->
+                        val lastPhotos = sorted.take(averageSumCount)
+                        lastPhotoSize = lastPhotos.firstOrNull()?.length() ?: 0L
+                        averagePhotoSize = lastPhotos.sumOf { it.length() } / lastPhotos.size
+                    }
+
+                oldestDir.listPhotoFiles()
+                    ?.sortedBy { it.name }
+                    ?.also { sorted ->
+                        sorted.first()?.let { oldestPhotoFile ->
+                            oldestPhotoTimestamp = getTimestampFromPhotoFileName(oldestPhotoFile.name)
+                        }
+                    }
+            }
+            ?.forEach { photosDateDir ->
+                photosDateDir.listPhotoFiles()
+                    ?.also { photoFiles ->
+                        usedSpace += photoFiles.sumOf { it.length() }
+                        photosCount += photoFiles.size
+                    }
+            }
+
+        val maxSpaceMb = Configuration.maxSpaceMb.toFloat()
+        val freeSpaceMb = maxSpaceMb - usedSpace.bytesToMegaBytes()
+
+        return DeviceInfo(
+            deviceId = deviceId,
+            freeSpaceMb = freeSpaceMb,
+            usedSpaceMb = usedSpace.bytesToMegaBytes(),
+            spaceLimitMb = maxSpaceMb,
+            lastPhotoSizeMb = lastPhotoSize.bytesToMegaBytes(),
+            averagePhotoSizeMb = averagePhotoSize.bytesToMegaBytes(),
+            photosCount = photosCount,
+            newestPhotoTimestamp = newestPhotoTimestamp,
+            oldestPhotoTimestamp = oldestPhotoTimestamp
+        )
+    }
 
     fun createMissingThumbnails() {
-        File("$projectPath/photos/").listFiles()?.forEach { dir ->
+        File(allDevicesPath).listFiles()?.forEach { dir ->
             if (!dir.isDirectory) return@forEach
 
             val thumbnailPath = Files.createDirectories(Paths.get("${dir.path}/thumbnails"))
@@ -159,55 +238,76 @@ class FileHandler {
         }
     }
 
+    fun movePhotosToCorrectDirs(deviceId: Long? = null) {
+        println("movePhotosToCorrectDirs")
+        File(allDevicesPath)
+            .listFiles { file -> file.isDirectory }
+            ?.forEach { photosDir ->
+                if (deviceId != null && photosDir.name != deviceId.toString()) return
+
+                // photos
+                moveFilesToDateDirs(photosDir, photosDir)
+
+                // thumbnails
+                val thumbnailsDir = File(photosDir, "thumbnails")
+                if (thumbnailsDir.exists()) {
+                    moveFilesToDateDirs(thumbnailsDir, photosDir)
+                }
+                thumbnailsDir.delete()
+            }
+    }
+
+    private fun moveFilesToDateDirs(sourceDir: File, targetParentDir: File) {
+        println("moveFilesToDateDirs sourceDir->targetParentDir")
+        sourceDir
+            .listFiles { file -> file.isFile }
+            ?.filter { it.name.matches(photoFileNameRegex) }
+            ?.forEach { photoFile ->
+                val deviceFileName = DeviceFileName.fromStringOrNull(photoFile.name)
+                    ?: throw Exception("Can't parse ${photoFile.name}")
+
+                val date = deviceFileName.date.toDefaultString()
+                val dateDir = File(targetParentDir, date)
+                if (!dateDir.exists()) {
+                    dateDir.mkdirs()
+                }
+
+                val targetFilePath = when (sourceDir.name) {
+                    "thumbnails" -> File(dateDir, "thumbnails/${photoFile.name}".replaceSeparators())
+                    else -> File(dateDir, photoFile.name)
+                }
+
+                println("Moving $photoFile to $targetFilePath")
+                photoFile.copyTo(targetFilePath)
+                photoFile.delete()
+            }
+    }
+
     private fun getTimestampFromPhotoFileName(fileName: String): Long? = try {
-        val stringDate = fileName.split("_")[1].substring(0, 17)
-        LocalDateTime.parse(stringDate, formatter).toInstant(ZoneOffset.UTC).toEpochMilli()
+        DeviceFileName.fromStringOrNull(fileName)?.dateTime?.toInstant(ZoneOffset.UTC)?.toEpochMilli()
     } catch (e: Exception) {
         println("getTimestampFromPhotoFileName error: can't convert '$fileName'")
         null
     }
 
-    fun getDeviceInfo(deviceId: Long): DeviceInfo {
-        val photosDir = File(getPhotosDir(deviceId))
+    private fun File.listPhotoDateDirs() = this.listFiles { file -> file.isDirectory && file.name.count() == 8 }
 
-        val averageSumCount = 10
-        var usedSpace = 0L
-        var lastPhotoSize = 0L
-        var averagePhotoSize = 0L
-        var photosCount = 0
-        var newestPhotoTimestamp: Long? = null
-        var oldestPhotoTimestamp: Long? = null
+    private fun File.listPhotoFiles() = this.listFiles { file -> file.isFile && file.name.matches(photoFileNameRegex) }
 
-        photosDir.listFiles()
-            ?.filter { it.isFile && it.name.matches(PHOTO_FILENAME_REGEX.toRegex()) }
-            ?.also { files ->
-                usedSpace = files.sumOf { it.length() }
-                photosCount = files.size
-                files
-                    .sortedByDescending { it.name }
-                    .also { sorted ->
-                        newestPhotoTimestamp = getTimestampFromPhotoFileName(sorted.firstOrNull()?.name ?: "")
-                        oldestPhotoTimestamp = getTimestampFromPhotoFileName(sorted.lastOrNull()?.name ?: "")
-                    }
-                    .take(averageSumCount)
-                    .also { lastPhotos ->
-                        lastPhotoSize = lastPhotos.firstOrNull()?.length() ?: 0L
-                        averagePhotoSize = lastPhotos.sumOf { it.length() } / averageSumCount
-                    }
-            }
+    private fun String.replaceSeparators() = this.replace('/', File.separatorChar)
 
-        val freeSpaceMb = Constants.MAX_SPACE_MB - usedSpace.bytesToMegaBytes()
+    private fun File.toPhoto(): Photo {
+        val deviceFileName = DeviceFileName.fromStringOrNull(this.name) ?: throw Exception("Can't parse ${this.name}")
+        val deviceId = deviceFileName.deviceId
+        val dateTime = deviceFileName.dateTime.toDefaultString()
 
-        return DeviceInfo(
+        return Photo(
             deviceId = deviceId,
-            freeSpaceMb = freeSpaceMb,
-            usedSpaceMb = usedSpace.bytesToMegaBytes(),
-            spaceLimitMb = Constants.MAX_SPACE_MB,
-            lastPhotoSizeMb = lastPhotoSize.bytesToMegaBytes(),
-            averagePhotoSizeMb = averagePhotoSize.bytesToMegaBytes(),
-            photosCount = photosCount,
-            newestPhotoTimestamp = newestPhotoTimestamp,
-            oldestPhotoTimestamp = oldestPhotoTimestamp
+            dateTime = dateTime,
+            fileName = this.name,
+            size = getImageSizeString(this),
+            url = getPhotoUrl(deviceFileName.toString()),
+            thumbnailUrl = getPhotoThumbnailUrl(deviceFileName.toString()),
         )
     }
 }
