@@ -6,6 +6,7 @@ import com.example.julianczaja.Constants.DEFAULT_PORT
 import com.example.julianczaja.plugins.configureLogging
 import com.example.julianczaja.plugins.configureRouting
 import com.example.julianczaja.plugins.configureSerialization
+import com.example.julianczaja.plugins.configureTemplating
 import io.ktor.server.application.*
 import io.ktor.server.engine.*
 import io.ktor.server.jetty.*
@@ -33,6 +34,7 @@ fun Application.module() {
 
     configureSerialization()
     configureLogging()
+    configureTemplating()
     configureRouting(fileHandler)
 }
 

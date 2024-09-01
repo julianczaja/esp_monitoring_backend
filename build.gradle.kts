@@ -11,7 +11,7 @@ plugins {
 }
 
 group = "com.example.julianczaja"
-version = "0.4.0"
+version = "0.5.0"
 
 
 application {
@@ -43,6 +43,7 @@ dependencies {
     implementation("io.ktor:ktor-server-call-logging-jvm:$ktor_version")
     implementation("io.ktor:ktor-server-default-headers-jvm:$ktor_version")
     implementation("io.ktor:ktor-server-jetty-jvm:$ktor_version")
+    implementation("io.ktor:ktor-server-freemarker:$ktor_version")
     implementation("ch.qos.logback:logback-classic:$logback_version")
     implementation("org.jetbrains.kotlinx:kotlinx-cli:$kotlin_cli_version")
 

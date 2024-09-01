@@ -1,26 +1,65 @@
 package com.example.julianczaja.plugins
 
-import com.example.julianczaja.UnknownDeviceException
-import com.example.julianczaja.DeviceFileName
-import com.example.julianczaja.FileHandler
-import com.example.julianczaja.addFileNameContentDescriptionHeader
-import com.example.julianczaja.toLocalDateOrNull
+import com.example.julianczaja.*
 import io.ktor.http.*
 import io.ktor.server.application.*
+import io.ktor.server.freemarker.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 
 fun Application.configureRouting(fileHandler: FileHandler) {
     routing {
-        uploadPhotoRoute(fileHandler)       // post      - BASE_URL/photo/{deviceId}
-        getPhotosDatesRoute(fileHandler)    // get       - BASE_URL/dates/{deviceId}
-        getPhotosForDateRoute(fileHandler)  // get       - BASE_URL/photos/{deviceId}/{date}
-        getPhotoRoute(fileHandler)          // get       - BASE_URL/photo/{filename}
-        getPhotoThumbnailRoute(fileHandler) // get       - BASE_URL/photo_thumbnail{filename}
-        getLastPhotoRoute(fileHandler)      // get       - BASE_URL/last_photo/{deviceId}
-        removePhotoRoute(fileHandler)       // delete    - BASE_URL/photos{filename}
-        getDeviceInfoRoute(fileHandler)     // get       - BASE_URL/device{deviceId}
+        getLastPhotoTemplateRoute(fileHandler)  // post      - BASE_URL/photo/{deviceId}
+        uploadPhotoRoute(fileHandler)           // post      - BASE_URL/photo/{deviceId}
+        getPhotosDatesRoute(fileHandler)        // get       - BASE_URL/dates/{deviceId}
+        getPhotosForDateRoute(fileHandler)      // get       - BASE_URL/photos/{deviceId}/{date}
+        getPhotoRoute(fileHandler)              // get       - BASE_URL/photo/{filename}
+        getPhotoThumbnailRoute(fileHandler)     // get       - BASE_URL/photo_thumbnail{filename}
+        getLastPhotoRoute(fileHandler)          // get       - BASE_URL/last_photo/{deviceId}
+        removePhotoRoute(fileHandler)           // delete    - BASE_URL/photos{filename}
+        getDeviceInfoRoute(fileHandler)         // get       - BASE_URL/device{deviceId}
+    }
+}
+
+fun Route.getLastPhotoTemplateRoute(fileHandler: FileHandler) {
+    get("/last/{deviceId}") {
+        try {
+            val deviceIdParam = call.parameters["deviceId"]
+            val deviceId = deviceIdParam?.toLongOrNull()
+            if (deviceId == null) {
+                call.respondText(text = "Error: Wrong deviceId: $deviceIdParam", status = HttpStatusCode.BadRequest)
+                return@get
+            }
+
+            val lastPhoto = fileHandler.getDeviceLastPhotoFromDisk(deviceId)
+            if (lastPhoto == null) {
+                call.respondText(
+                    text = "Error: Last photo of device $deviceIdParam not found",
+                    status = HttpStatusCode.NotFound
+                )
+            } else {
+                val content = FreeMarkerContent(
+                    "index.ftl",
+                    mapOf(
+                        "url" to lastPhoto.url,
+                        "deviceId" to lastPhoto.deviceId,
+                        "size" to lastPhoto.size,
+                        "dateTime" to lastPhoto.dateTime.toLocalDateTime().toPrettyString(),
+                    )
+                )
+                call.respond(content)
+            }
+        } catch (e: UnknownDeviceException) {
+            application.log.error("getLastPhotoTemplateRoute", e)
+            call.respondText(
+                text = "Error: unknown device (id = ${call.parameters["deviceId"]})",
+                status = HttpStatusCode.InternalServerError
+            )
+        } catch (e: Exception) {
+            application.log.error("getLastPhotoTemplateRoute", e)
+            call.respondText(text = "Error: ${e.message}", status = HttpStatusCode.InternalServerError)
+        }
     }
 }
 

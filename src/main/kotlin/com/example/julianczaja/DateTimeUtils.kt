@@ -19,6 +19,8 @@ private val dateTimeFormatter: DateTimeFormatter = DateTimeFormatterBuilder()
     .appendValue(ChronoField.MILLI_OF_SECOND, 3)
     .toFormatter()
 
+private val prettyDateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+
 private val currentDateTime get() = LocalDateTime.now(ZoneId.of("Europe/Warsaw"))
 
 val currentDateTimeString: String get() = dateTimeFormatter.format(currentDateTime)
@@ -26,6 +28,8 @@ val currentDateTimeString: String get() = dateTimeFormatter.format(currentDateTi
 fun String.toLocalDateTime(): LocalDateTime = LocalDateTime.parse(this, dateTimeFormatter)
 
 fun LocalDateTime.toDefaultString(): String = this.format(dateTimeFormatter)
+
+fun LocalDateTime.toPrettyString(): String = this.format(prettyDateTimeFormatter)
 
 // LocalDate
 private val dateFormatter: DateTimeFormatter = DateTimeFormatterBuilder()
