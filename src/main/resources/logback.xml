@@ -15,9 +15,9 @@
             <pattern>%d{YYYY-MM-dd HH:mm:ss} [ %level ]\n%msg%n</pattern>
         </encoder>
     </appender>
-    <root level="debug">
+    <root level="INFO">
         <appender-ref ref="STDOUT"/>
         <appender-ref ref="FILE"/>
     </root>
-    <logger name="io.netty" level="DEBUG"/>
+    <logger name="io.jetty" level="INFO"/>
 </configuration>

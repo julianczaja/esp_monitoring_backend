@@ -118,21 +118,25 @@ class FileHandler {
     }
 
     suspend fun savePhotoFromChannel(deviceId: Long, channel: ByteReadChannel) = withContext(Dispatchers.IO) {
-        val fileName = getPhotoName(deviceId)
-        val deviceFileName = DeviceFileName.fromStringOrNull(fileName) ?: throw Exception("Can't parse $fileName")
+        try {
+            val fileName = getPhotoName(deviceId)
+            val deviceFileName = DeviceFileName.fromStringOrNull(fileName) ?: throw Exception("Can't parse $fileName")
 
-        val photosDir = getPhotosDir(deviceId, deviceFileName.date.toDefaultString())
-        Files.createDirectories(Paths.get(photosDir))
-        val photoFile = File(photosDir, fileName)
-        channel.copyAndClose(photoFile.writeChannel(Dispatchers.IO))
+            val photosDir = getPhotosDir(deviceId, deviceFileName.date.toDefaultString())
+            Files.createDirectories(Paths.get(photosDir))
+            val photoFile = File(photosDir, fileName)
+            channel.copyAndClose(photoFile.writeChannel(Dispatchers.IO))
 
-        val thumbnailsDir = getPhotosThumbnailsDir(deviceId, deviceFileName.date.toDefaultString())
-        Files.createDirectories(Paths.get(thumbnailsDir))
-        createAndSaveThumbnail(
-            fromFile = photoFile,
-            thumbnailsDir = thumbnailsDir,
-            fileName = fileName
-        )
+            val thumbnailsDir = getPhotosThumbnailsDir(deviceId, deviceFileName.date.toDefaultString())
+            Files.createDirectories(Paths.get(thumbnailsDir))
+            createAndSaveThumbnail(
+                fromFile = photoFile,
+                thumbnailsDir = thumbnailsDir,
+                fileName = fileName
+            )
+        } catch (e: Exception) {
+            println("savePhotoFromChannel error: $e")
+        }
     }
 
     private suspend fun createAndSaveThumbnail(
