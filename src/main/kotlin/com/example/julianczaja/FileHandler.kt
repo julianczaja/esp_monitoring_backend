@@ -16,11 +16,14 @@ import java.nio.file.Files
 import java.nio.file.Paths
 import java.time.LocalDate
 import java.time.ZoneOffset
+import java.util.concurrent.ConcurrentHashMap
 import javax.imageio.ImageIO
 import javax.imageio.ImageReader
 
 
 class FileHandler {
+
+    private val lastCleanupTimes: MutableMap<Long, Long> = ConcurrentHashMap()
 
     private val photoFileNameRegex = PHOTO_FILENAME_REGEX.toRegex()
 
@@ -137,6 +140,78 @@ class FileHandler {
         } catch (e: Exception) {
             println("savePhotoFromChannel error: $e")
         }
+    }
+
+    fun cleanup(deviceId: Long) {
+        println("$deviceId cleanup...")
+        val startTime = System.currentTimeMillis()
+        val lastCleanupTime = lastCleanupTimes[deviceId]
+
+        if (lastCleanupTime != null && startTime - lastCleanupTime < Configuration.cleanupIntervalMs) {
+            println("Cleanup for device $deviceId skipped. Last cleanup was less than 60 minutes ago.")
+            return
+        }
+
+        val deviceDir = File(getDeviceDir(deviceId))
+        val maxSizeBytes = Configuration.maxSpaceMb * 1024 * 1024
+
+        var totalPhotosSize = 0L
+        var totalThumbnailsSize = 0L
+        val photosToDelete = mutableListOf<File>()
+
+        deviceDir.listPhotoDateDirs()
+            ?.sortedByDescending { it.name }
+            ?.forEach { dir ->
+                dir.listPhotoFiles()?.forEach { photo ->
+                    val photoSize = photo.length()
+                    val thumbnail = File(dir, "thumbnails/${photo.name}")
+                    val thumbnailSize = if (thumbnail.exists()) thumbnail.length() else 0L
+
+                    totalPhotosSize += photoSize
+                    totalThumbnailsSize += thumbnailSize
+
+                    if (totalPhotosSize + totalThumbnailsSize > maxSizeBytes) {
+                        photosToDelete.add(photo)
+                    }
+                }
+            }
+
+        val totalSize = totalPhotosSize + totalThumbnailsSize
+
+        if (totalSize <= maxSizeBytes) {
+            val currentTime = System.currentTimeMillis()
+            lastCleanupTimes[deviceId] = currentTime
+            println("Cleanup done in ${currentTime - startTime}ms")
+            return
+        }
+
+        println("Starting deletion...")
+
+        var currentSize = totalSize
+
+        photosToDelete.sortByDescending { it.name }
+        photosToDelete.forEach { photo ->
+            if (currentSize <= maxSizeBytes) return@forEach
+
+            val thumbnailFile = File(photo.parentFile, "thumbnails/${photo.name}")
+            if (thumbnailFile.exists()) {
+                currentSize -= thumbnailFile.length()
+                thumbnailFile.delete()
+            }
+
+            currentSize -= photo.length()
+            photo.delete()
+        }
+
+        deviceDir.walkBottomUp().forEach { folder ->
+            if (folder.isDirectory && folder.listFiles()?.isEmpty() == true) {
+                folder.delete()
+            }
+        }
+
+        val currentTime = System.currentTimeMillis()
+        lastCleanupTimes[deviceId] = currentTime
+        println("Cleanup done in ${currentTime - startTime}ms")
     }
 
     private suspend fun createAndSaveThumbnail(

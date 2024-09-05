@@ -1,6 +1,7 @@
 package com.example.julianczaja
 
 import com.example.julianczaja.Constants.DEFAULT_BASE_URL
+import com.example.julianczaja.Constants.DEFAULT_CLEANUP_INTERVAL_MS
 import com.example.julianczaja.Constants.DEFAULT_MAX_SPACE_MB
 import com.example.julianczaja.Constants.DEFAULT_PORT
 import com.example.julianczaja.plugins.configureLogging
@@ -59,9 +60,16 @@ private fun parseArgs(args: Array<String>) {
         description = "Max photos space per device (MB)"
     ).default(DEFAULT_MAX_SPACE_MB)
 
+    val cleanupIntervalMs by parser.option(
+        type = ArgType.Int,
+        shortName = "c",
+        description = "Photos cleanup interval (ms)"
+    ).default(DEFAULT_CLEANUP_INTERVAL_MS)
+
     parser.parse(args)
 
     Configuration.baseUrl = baseUrl
     Configuration.port = port
     Configuration.maxSpaceMb = maxSpaceMb
+    Configuration.cleanupIntervalMs = cleanupIntervalMs
 }

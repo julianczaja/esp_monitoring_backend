@@ -71,10 +71,9 @@ fun Route.uploadPhotoRoute(fileHandler: FileHandler) {
                 call.respondText(text = "Error: Wrong deviceId", status = HttpStatusCode.BadRequest)
                 return@post
             }
-
             fileHandler.savePhotoFromChannel(deviceId, call.receiveChannel())
-
             call.respondText("Ok", status = HttpStatusCode.OK)
+            fileHandler.cleanup(deviceId)
         } catch (e: Exception) {
             application.log.error("uploadPhotoRoute", e)
             call.respondText(text = "Error: ${e.message}", status = HttpStatusCode.InternalServerError)
