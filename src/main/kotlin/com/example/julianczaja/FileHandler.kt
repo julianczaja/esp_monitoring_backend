@@ -11,12 +11,15 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import net.coobird.thumbnailator.Thumbnails
 import java.awt.image.BufferedImage
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.time.LocalDate
 import java.time.ZoneOffset
 import java.util.concurrent.ConcurrentHashMap
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
 import javax.imageio.ImageIO
 import javax.imageio.ImageReader
 
@@ -38,6 +41,17 @@ class FileHandler {
 
     private fun getPhotosThumbnailsDir(deviceId: Long, date: String) =
         "$allDevicesPath/$deviceId/$date/thumbnails".replaceSeparators()
+
+    fun getPhotosZipFile(filesNames: List<String>, isHighQuality: Boolean): ByteArray {
+        val deviceFilesNames = filesNames.mapNotNull { DeviceFileName.fromStringOrNull(it) }
+        val files = deviceFilesNames.mapNotNull { fileName ->
+            when {
+                isHighQuality -> getPhotoFile(fileName).takeIf { it.exists() }
+                else -> getPhotoThumbnailFile(fileName).takeIf { it.exists() }
+            }
+        }
+        return createZip(files)
+    }
 
     fun getPhotoFile(fileName: DeviceFileName): File {
         val devicePhotosDateDir = getPhotosDir(fileName.deviceId, fileName.date.toDefaultString())
@@ -367,6 +381,21 @@ class FileHandler {
     } catch (e: Exception) {
         println("getTimestampFromPhotoFileName error: can't convert '$fileName'")
         null
+    }
+
+    private fun createZip(files: List<File>): ByteArray {
+        val outputStream = ByteArrayOutputStream()
+        ZipOutputStream(outputStream).use { zipOut ->
+            files.forEach { file ->
+                val zipEntry = ZipEntry(file.name)
+                zipOut.putNextEntry(zipEntry)
+                file.inputStream().use { input ->
+                    input.copyTo(zipOut)
+                }
+                zipOut.closeEntry()
+            }
+        }
+        return outputStream.toByteArray()
     }
 
     private fun File.listPhotoDateDirs() = this.listFiles { file -> file.isDirectory && file.name.count() == 8 }

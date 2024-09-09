@@ -14,6 +14,7 @@ fun Application.configureRouting(fileHandler: FileHandler) {
         uploadPhotoRoute(fileHandler)           // post      - BASE_URL/photo/{deviceId}
         getPhotosDatesRoute(fileHandler)        // get       - BASE_URL/dates/{deviceId}
         getPhotosForDateRoute(fileHandler)      // get       - BASE_URL/photos/{deviceId}/{date}
+        getPhotosByNamesRoute(fileHandler)      // post      - BASE_URL/photos
         getPhotoRoute(fileHandler)              // get       - BASE_URL/photo/{filename}
         getPhotoThumbnailRoute(fileHandler)     // get       - BASE_URL/photo_thumbnail{filename}
         getLastPhotoRoute(fileHandler)          // get       - BASE_URL/last_photo/{deviceId}
@@ -134,6 +135,27 @@ fun Route.getPhotosForDateRoute(fileHandler: FileHandler) {
             return@get
         } catch (e: Exception) {
             application.log.error("getPhotosForDateRoute", e)
+            call.respondText(text = "Error: ${e.message}", status = HttpStatusCode.InternalServerError)
+        }
+    }
+}
+
+fun Route.getPhotosByNamesRoute(fileHandler: FileHandler) {
+    post("/photos") {
+        try {
+            val params = call.receive<GetPhotosZipParams>()
+            if (params.fileNames.isEmpty()) throw Exception("Empty files list in PhotosZipParams")
+
+            val zipBytes = fileHandler.getPhotosZipFile(params.fileNames, params.isHighQuality)
+
+            call.response.addFileNameContentDescriptionHeader("photos.zip")
+            call.respondBytes(
+                bytes = zipBytes,
+                contentType = ContentType.Application.Zip,
+                status = HttpStatusCode.OK
+            )
+        } catch (e: Exception) {
+            application.log.error("getPhotosByNamesRoute", e)
             call.respondText(text = "Error: ${e.message}", status = HttpStatusCode.InternalServerError)
         }
     }
