@@ -11,7 +11,7 @@ plugins {
 }
 
 group = "com.example.julianczaja"
-version = "0.6.1"
+version = "0.6.2"
 
 
 application {

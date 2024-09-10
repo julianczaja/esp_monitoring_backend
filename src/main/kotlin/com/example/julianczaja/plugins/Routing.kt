@@ -19,6 +19,7 @@ fun Application.configureRouting(fileHandler: FileHandler) {
         getPhotoThumbnailRoute(fileHandler)     // get       - BASE_URL/photo_thumbnail{filename}
         getLastPhotoRoute(fileHandler)          // get       - BASE_URL/last_photo/{deviceId}
         removePhotoRoute(fileHandler)           // delete    - BASE_URL/photos{filename}
+        removePhotosRoute(fileHandler)          // post      - BASE_URL/photos/remove
         getDeviceInfoRoute(fileHandler)         // get       - BASE_URL/device{deviceId}
     }
 }
@@ -258,6 +259,22 @@ private fun Route.removePhotoRoute(fileHandler: FileHandler) {
             call.respondText(text = "Ok", status = HttpStatusCode.OK)
         } catch (e: Exception) {
             application.log.error("removePhotoRoute", e)
+            call.respondText(text = "Error: ${e.message}", status = HttpStatusCode.InternalServerError)
+        }
+    }
+}
+
+private fun Route.removePhotosRoute(fileHandler: FileHandler) {
+    post("/photos/remove") {
+        try {
+            val fileNames = call.receive<List<String>>()
+            if (fileNames.isEmpty()) throw Exception("Empty files list in removePhotosRoute")
+
+            fileHandler.removePhotos(fileNames)
+
+            call.respondText(text = "Ok", status = HttpStatusCode.OK)
+        } catch (e: Exception) {
+            application.log.error("removePhotosRoute", e)
             call.respondText(text = "Error: ${e.message}", status = HttpStatusCode.InternalServerError)
         }
     }

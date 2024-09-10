@@ -255,6 +255,20 @@ class FileHandler {
             }
     }
 
+    fun removePhotos(fileNames: List<String>) {
+        val devicesFileNames = fileNames.mapNotNull { DeviceFileName.fromStringOrNull(it) }
+
+        devicesFileNames
+            .groupBy { it.deviceId }
+            .map { it.key to it.value.toString() }
+            .forEach { (deviceId, deviceFileNames) ->
+                File(getDeviceDir(deviceId))
+                    .walk()
+                    .filter { it.name in deviceFileNames }
+                    .forEach { it.delete() }
+            }
+    }
+
     fun getDeviceInfo(deviceId: Long): DeviceInfo {
         val deviceDir = File(getDeviceDir(deviceId))
 
