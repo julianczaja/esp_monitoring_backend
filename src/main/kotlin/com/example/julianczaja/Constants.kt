@@ -8,6 +8,9 @@ object Constants {
 
     const val PHOTO_FILENAME_REGEX = """[0-9]_[0-9]{17}.jpeg"""
 
+
+    const val BLACK_PHOTO_THRESHOLD = 90.0  // %
+    const val BLACK_PIXEL_THRESHOLD = 25    // %
     const val THUMBNAIL_SIZE_PX = 200
 
     val projectPath: String = System.getProperty("user.dir")

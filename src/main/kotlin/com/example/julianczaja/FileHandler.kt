@@ -7,10 +7,7 @@ import com.example.julianczaja.plugins.Photo
 import io.ktor.util.cio.*
 import io.ktor.utils.io.*
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
-import net.coobird.thumbnailator.Thumbnails
-import java.awt.image.BufferedImage
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.nio.file.Files
@@ -20,8 +17,6 @@ import java.time.ZoneOffset
 import java.util.concurrent.ConcurrentHashMap
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
-import javax.imageio.ImageIO
-import javax.imageio.ImageReader
 
 
 class FileHandler {
@@ -68,22 +63,6 @@ class FileHandler {
     private fun getPhotoUrl(fileName: String) = "${Configuration.fullUrl}/photo/$fileName"
 
     private fun getPhotoThumbnailUrl(fileName: String) = "${Configuration.fullUrl}/photo_thumbnail/$fileName"
-
-    private fun getImageSizeString(file: File): String {
-        ImageIO.createImageInputStream(file).use { input ->
-            val readers: Iterator<ImageReader> = ImageIO.getImageReaders(input)
-            if (readers.hasNext()) {
-                val reader = readers.next()
-                try {
-                    reader.input = input
-                    return "${reader.getWidth(0)}x${reader.getHeight(0)} px"
-                } finally {
-                    reader.dispose()
-                }
-            }
-        }
-        return "unknown"
-    }
 
     fun getDevicePhotosDatesFromDisk(deviceId: Long): List<String> {
         val deviceDir = getDeviceDir(deviceId)
@@ -139,17 +118,24 @@ class FileHandler {
             val fileName = getPhotoName(deviceId)
             val deviceFileName = DeviceFileName.fromStringOrNull(fileName) ?: throw Exception("Can't parse $fileName")
 
+            val byteArray = channel.toByteArray()
+
+            if (PhotoUtils.isPhotoMostlyBlack(byteArray)) {
+                println("savePhotoFromChannel: photo is mostly black, skipping")
+                return@withContext
+            }
+
             val photosDir = getPhotosDir(deviceId, deviceFileName.date.toDefaultString())
             Files.createDirectories(Paths.get(photosDir))
             val photoFile = File(photosDir, fileName)
-            channel.copyAndClose(photoFile.writeChannel(Dispatchers.IO))
+            photoFile.writeBytes(byteArray)
 
             val thumbnailsDir = getPhotosThumbnailsDir(deviceId, deviceFileName.date.toDefaultString())
             Files.createDirectories(Paths.get(thumbnailsDir))
-            createAndSaveThumbnail(
-                fromFile = photoFile,
-                thumbnailsDir = thumbnailsDir,
-                fileName = fileName
+            val thumbnailFile = File(thumbnailsDir, fileName)
+            PhotoUtils.createAndSaveThumbnail(
+                photoByteArray = byteArray,
+                outputFile = thumbnailFile
             )
         } catch (e: Exception) {
             println("savePhotoFromChannel error: $e")
@@ -226,20 +212,6 @@ class FileHandler {
         val currentTime = System.currentTimeMillis()
         lastCleanupTimes[deviceId] = currentTime
         println("Cleanup done in ${currentTime - startTime}ms")
-    }
-
-    private suspend fun createAndSaveThumbnail(
-        fromFile: File,
-        thumbnailsDir: String,
-        fileName: String,
-        sizePx: Int = Constants.THUMBNAIL_SIZE_PX
-    ) = withContext(Dispatchers.IO) {
-        val thumbnailImage: BufferedImage = Thumbnails.of(fromFile)
-            .size(sizePx, sizePx)
-            .asBufferedImage()
-        val thumbnailFile = File(thumbnailsDir, fileName)
-
-        ImageIO.write(thumbnailImage, "jpeg", thumbnailFile)
     }
 
     fun removePhoto(fileName: DeviceFileName) {
@@ -337,9 +309,12 @@ class FileHandler {
 
             val thumbnailPath = Files.createDirectories(Paths.get("${dir.path}/thumbnails"))
 
-            dir.listFiles()?.forEach { file ->
-                if (file.isFile) {
-                    runBlocking { createAndSaveThumbnail(file, thumbnailPath.toString(), file.name) }
+            dir.listFiles()?.forEach { photoFile ->
+                if (photoFile.isFile) {
+                    PhotoUtils.createAndSaveThumbnail(
+                        fullPhotoFile = photoFile,
+                        outputFile = File(thumbnailPath.toString(), photoFile.name)
+                    )
                 }
             }
         }
@@ -427,7 +402,7 @@ class FileHandler {
             deviceId = deviceId,
             dateTime = dateTime,
             fileName = this.name,
-            size = getImageSizeString(this),
+            size = PhotoUtils.getImageSizeString(this),
             url = getPhotoUrl(deviceFileName.toString()),
             thumbnailUrl = getPhotoThumbnailUrl(deviceFileName.toString()),
         )

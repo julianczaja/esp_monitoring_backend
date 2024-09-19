@@ -11,7 +11,7 @@ plugins {
 }
 
 group = "com.example.julianczaja"
-version = "0.6.2"
+version = "0.6.3"
 
 
 application {
@@ -46,6 +46,5 @@ dependencies {
     implementation("io.ktor:ktor-server-freemarker:$ktor_version")
     implementation("ch.qos.logback:logback-classic:$logback_version")
     implementation("org.jetbrains.kotlinx:kotlinx-cli:$kotlin_cli_version")
-
-    implementation("net.coobird:thumbnailator:0.4.20")
+    implementation("com.sksamuel.scrimage:scrimage-core:4.2.0")
 }
