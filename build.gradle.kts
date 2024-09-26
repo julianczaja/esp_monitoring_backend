@@ -6,12 +6,12 @@ val kotlin_cli_version: String by project
 plugins {
     application
     kotlin("jvm") version "2.0.20"
-    id("io.ktor.plugin") version "2.3.12"
+    id("io.ktor.plugin") version "3.0.0-rc-1"
     id("org.jetbrains.kotlin.plugin.serialization") version "2.0.20"
 }
 
 group = "com.example.julianczaja"
-version = "0.6.3"
+version = "0.6.4"
 
 
 application {
@@ -42,7 +42,7 @@ dependencies {
     implementation("io.ktor:ktor-serialization-kotlinx-json-jvm:$ktor_version")
     implementation("io.ktor:ktor-server-call-logging-jvm:$ktor_version")
     implementation("io.ktor:ktor-server-default-headers-jvm:$ktor_version")
-    implementation("io.ktor:ktor-server-jetty-jvm:$ktor_version")
+    implementation("io.ktor:ktor-server-netty:$ktor_version")
     implementation("io.ktor:ktor-server-freemarker:$ktor_version")
     implementation("ch.qos.logback:logback-classic:$logback_version")
     implementation("org.jetbrains.kotlinx:kotlinx-cli:$kotlin_cli_version")

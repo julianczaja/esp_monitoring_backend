@@ -10,7 +10,7 @@ import com.example.julianczaja.plugins.configureSerialization
 import com.example.julianczaja.plugins.configureTemplating
 import io.ktor.server.application.*
 import io.ktor.server.engine.*
-import io.ktor.server.jetty.*
+import io.ktor.server.netty.*
 import kotlinx.cli.ArgParser
 import kotlinx.cli.ArgType
 import kotlinx.cli.default
@@ -18,7 +18,7 @@ import kotlinx.cli.default
 fun main(args: Array<String>) {
     parseArgs(args)
     embeddedServer(
-        Jetty,
+        Netty,
         host = Configuration.baseUrl,
         port = Configuration.port,
         module = Application::module
