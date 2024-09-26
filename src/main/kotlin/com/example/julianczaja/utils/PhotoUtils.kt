@@ -1,7 +1,5 @@
-package com.example.julianczaja
+package com.example.julianczaja.utils
 
-import com.example.julianczaja.Constants.BLACK_PHOTO_THRESHOLD
-import com.example.julianczaja.Constants.BLACK_PIXEL_THRESHOLD
 import com.sksamuel.scrimage.ImmutableImage
 import com.sksamuel.scrimage.nio.JpegWriter
 import com.sksamuel.scrimage.pixels.Pixel
@@ -9,6 +7,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayInputStream
 import java.io.File
+import javax.imageio.ImageIO
 
 object PhotoUtils {
 
@@ -36,7 +35,7 @@ object PhotoUtils {
 
     fun createAndSaveThumbnail(
         fullPhotoFile: File,
-        thumbnailWidth: Int = Constants.THUMBNAIL_SIZE_PX,
+        thumbnailWidth: Int = THUMBNAIL_SIZE_PX,
         outputFile: File
     ) {
         val image = ImmutableImage.loader().fromFile(fullPhotoFile)
@@ -47,7 +46,7 @@ object PhotoUtils {
 
     fun createAndSaveThumbnail(
         photoByteArray: ByteArray,
-        thumbnailWidth: Int = Constants.THUMBNAIL_SIZE_PX,
+        thumbnailWidth: Int = THUMBNAIL_SIZE_PX,
         outputFile: File
     ) {
         val image = ImmutableImage.loader().fromBytes(photoByteArray)
@@ -57,8 +56,19 @@ object PhotoUtils {
     }
 
     fun getImageSizeString(file: File) = try {
-        val image = ImmutableImage.loader().fromFile(file)
-        "${image.width}x${image.height} px"
+        ImageIO.createImageInputStream(file).use { input ->
+            val readers = ImageIO.getImageReaders(input)
+            if (readers.hasNext()) {
+                val reader = readers.next()
+                reader.input = input
+                val width = reader.getWidth(0)
+                val height = reader.getHeight(0)
+                reader.dispose()
+                return "${width}x${height} px"
+            } else {
+                "unknown"
+            }
+        }
     } catch (e: Exception) {
         "unknown"
     }
@@ -66,5 +76,4 @@ object PhotoUtils {
     private fun isPixelBlack(pixel: Pixel) = pixel.red() <= BLACK_PIXEL_THRESHOLD
             && pixel.green() <= BLACK_PIXEL_THRESHOLD
             && pixel.blue() <= BLACK_PIXEL_THRESHOLD
-
 }

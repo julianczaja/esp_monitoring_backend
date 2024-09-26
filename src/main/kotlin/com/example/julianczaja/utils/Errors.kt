@@ -1,3 +1,3 @@
-package com.example.julianczaja
+package com.example.julianczaja.utils
 
 class UnknownDeviceException : Exception()

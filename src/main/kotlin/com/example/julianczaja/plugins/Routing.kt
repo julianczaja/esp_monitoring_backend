@@ -1,6 +1,9 @@
 package com.example.julianczaja.plugins
 
-import com.example.julianczaja.*
+import com.example.julianczaja.model.DeviceFileName
+import com.example.julianczaja.model.DeviceServerSettings
+import com.example.julianczaja.model.GetPhotosZipParams
+import com.example.julianczaja.utils.*
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.freemarker.*
@@ -8,23 +11,25 @@ import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 
-fun Application.configureRouting(fileHandler: FileHandler) {
+fun Application.configureRouting() {
     routing {
-        getLastPhotoTemplateRoute(fileHandler)  // post      - BASE_URL/photo/{deviceId}
-        uploadPhotoRoute(fileHandler)           // post      - BASE_URL/photo/{deviceId}
-        getPhotosDatesRoute(fileHandler)        // get       - BASE_URL/dates/{deviceId}
-        getPhotosForDateRoute(fileHandler)      // get       - BASE_URL/photos/{deviceId}/{date}
-        getPhotosByNamesRoute(fileHandler)      // post      - BASE_URL/photos
-        getPhotoRoute(fileHandler)              // get       - BASE_URL/photo/{filename}
-        getPhotoThumbnailRoute(fileHandler)     // get       - BASE_URL/photo_thumbnail{filename}
-        getLastPhotoRoute(fileHandler)          // get       - BASE_URL/last_photo/{deviceId}
-        removePhotoRoute(fileHandler)           // delete    - BASE_URL/photos{filename}
-        removePhotosRoute(fileHandler)          // post      - BASE_URL/photos/remove
-        getDeviceInfoRoute(fileHandler)         // get       - BASE_URL/device{deviceId}
+        getLastPhotoTemplateRoute()         // post      - BASE_URL/photo/{deviceId}
+        uploadPhotoRoute()                  // post      - BASE_URL/photo/{deviceId}
+        getPhotosDatesRoute()               // get       - BASE_URL/dates/{deviceId}
+        getPhotosForDateRoute()             // get       - BASE_URL/photos/{deviceId}/{date}
+        getPhotosByNamesRoute()             // post      - BASE_URL/photos
+        getPhotoRoute()                     // get       - BASE_URL/photo/{filename}
+        getPhotoThumbnailRoute()            // get       - BASE_URL/photo_thumbnail{filename}
+        getLastPhotoRoute()                 // get       - BASE_URL/last_photo/{deviceId}
+        removePhotoRoute()                  // delete    - BASE_URL/photos{filename}
+        removePhotosRoute()                 // post      - BASE_URL/photos/remove
+        getDeviceInfoRoute()                // get       - BASE_URL/device/{deviceId}
+        getDeviceServerSettingsRoute()      // get       - BASE_URL/device/{deviceId}/settings
+        updateDeviceServerSettingsRoute()   // post      - BASE_URL/device/{deviceId}/settings
     }
 }
 
-fun Route.getLastPhotoTemplateRoute(fileHandler: FileHandler) {
+fun Route.getLastPhotoTemplateRoute() {
     get("/last/{deviceId}") {
         try {
             val deviceIdParam = call.parameters["deviceId"]
@@ -34,7 +39,7 @@ fun Route.getLastPhotoTemplateRoute(fileHandler: FileHandler) {
                 return@get
             }
 
-            val lastPhoto = fileHandler.getDeviceLastPhotoFromDisk(deviceId)
+            val lastPhoto = FileHandler.getDeviceLastPhotoFromDisk(deviceId)
             if (lastPhoto == null) {
                 call.respondText(
                     text = "Error: Last photo of device $deviceIdParam not found",
@@ -65,7 +70,7 @@ fun Route.getLastPhotoTemplateRoute(fileHandler: FileHandler) {
     }
 }
 
-fun Route.uploadPhotoRoute(fileHandler: FileHandler) {
+fun Route.uploadPhotoRoute() {
     post("/photo/{deviceId}") {
         try {
             val deviceId = call.parameters["deviceId"]?.toLongOrNull()
@@ -73,9 +78,9 @@ fun Route.uploadPhotoRoute(fileHandler: FileHandler) {
                 call.respondText(text = "Error: Wrong deviceId", status = HttpStatusCode.BadRequest)
                 return@post
             }
-            fileHandler.savePhotoFromChannel(deviceId, call.receiveChannel())
+            FileHandler.savePhotoFromChannel(deviceId, call.receiveChannel())
             call.respondText("Ok", status = HttpStatusCode.OK)
-            fileHandler.cleanup(deviceId)
+            FileHandler.cleanup(deviceId)
         } catch (e: Exception) {
             application.log.error("uploadPhotoRoute", e)
             call.respondText(text = "Error: ${e.message}", status = HttpStatusCode.InternalServerError)
@@ -83,7 +88,7 @@ fun Route.uploadPhotoRoute(fileHandler: FileHandler) {
     }
 }
 
-fun Route.getPhotosDatesRoute(fileHandler: FileHandler) {
+fun Route.getPhotosDatesRoute() {
     get("/dates/{deviceId}") {
         try {
             val deviceId = call.parameters["deviceId"]?.toLongOrNull()
@@ -92,7 +97,7 @@ fun Route.getPhotosDatesRoute(fileHandler: FileHandler) {
                 return@get
             }
 
-            val days = fileHandler.getDevicePhotosDatesFromDisk(deviceId)
+            val days = FileHandler.getDevicePhotosDatesFromDisk(deviceId)
 
             call.respond(message = days, status = HttpStatusCode.OK)
         } catch (e: UnknownDeviceException) {
@@ -108,7 +113,7 @@ fun Route.getPhotosDatesRoute(fileHandler: FileHandler) {
     }
 }
 
-fun Route.getPhotosForDateRoute(fileHandler: FileHandler) {
+fun Route.getPhotosForDateRoute() {
     get("/photos/{deviceId}/{date}") {
         try {
             val deviceIdParam = call.parameters["deviceId"]
@@ -125,7 +130,7 @@ fun Route.getPhotosForDateRoute(fileHandler: FileHandler) {
                 return@get
             }
 
-            val photos = fileHandler.getDevicePhotosForDateFromDisk(deviceId, date)
+            val photos = FileHandler.getDevicePhotosForDateFromDisk(deviceId, date)
 
             call.respond(message = photos, status = HttpStatusCode.OK)
         } catch (e: UnknownDeviceException) {
@@ -141,13 +146,13 @@ fun Route.getPhotosForDateRoute(fileHandler: FileHandler) {
     }
 }
 
-fun Route.getPhotosByNamesRoute(fileHandler: FileHandler) {
+fun Route.getPhotosByNamesRoute() {
     post("/photos") {
         try {
             val params = call.receive<GetPhotosZipParams>()
             if (params.fileNames.isEmpty()) throw Exception("Empty files list in PhotosZipParams")
 
-            val zipBytes = fileHandler.getPhotosZipFile(params.fileNames, params.isHighQuality)
+            val zipBytes = FileHandler.getPhotosZipFile(params.fileNames, params.isHighQuality)
 
             call.response.addFileNameContentDescriptionHeader("photos.zip")
             call.respondBytes(
@@ -162,7 +167,7 @@ fun Route.getPhotosByNamesRoute(fileHandler: FileHandler) {
     }
 }
 
-fun Route.getPhotoRoute(fileHandler: FileHandler) {
+fun Route.getPhotoRoute() {
     get("/photo/{filename}") {
         try {
             val fileNameParam = call.parameters["filename"] ?: ""
@@ -172,7 +177,7 @@ fun Route.getPhotoRoute(fileHandler: FileHandler) {
                 return@get
             }
 
-            val photoFile = fileHandler.getPhotoFile(fileName)
+            val photoFile = FileHandler.getPhotoFile(fileName)
             if (!photoFile.exists()) {
                 call.respondText(text = "Error: file not exists: $fileNameParam", status = HttpStatusCode.BadRequest)
             }
@@ -186,7 +191,7 @@ fun Route.getPhotoRoute(fileHandler: FileHandler) {
     }
 }
 
-fun Route.getPhotoThumbnailRoute(fileHandler: FileHandler) {
+fun Route.getPhotoThumbnailRoute() {
     get("/photo_thumbnail/{filename}") {
         try {
             val fileNameParam = call.parameters["filename"] ?: ""
@@ -196,7 +201,7 @@ fun Route.getPhotoThumbnailRoute(fileHandler: FileHandler) {
                 return@get
             }
 
-            val photoFile = fileHandler.getPhotoThumbnailFile(fileName)
+            val photoFile = FileHandler.getPhotoThumbnailFile(fileName)
             if (!photoFile.exists()) {
                 call.respondText(text = "Error: file not exists: $photoFile", status = HttpStatusCode.BadRequest)
             }
@@ -210,7 +215,7 @@ fun Route.getPhotoThumbnailRoute(fileHandler: FileHandler) {
     }
 }
 
-private fun Route.getLastPhotoRoute(fileHandler: FileHandler) {
+private fun Route.getLastPhotoRoute() {
     get("/last_photo/{deviceId}") {
         val deviceIdParam = call.parameters["deviceId"]
 
@@ -221,7 +226,7 @@ private fun Route.getLastPhotoRoute(fileHandler: FileHandler) {
                 return@get
             }
 
-            val photo = fileHandler.getDeviceLastPhotoFromDisk(deviceId)
+            val photo = FileHandler.getDeviceLastPhotoFromDisk(deviceId)
             if (photo == null) {
                 call.respondText(
                     text = "Error: Last photo of device $deviceIdParam not found",
@@ -244,7 +249,7 @@ private fun Route.getLastPhotoRoute(fileHandler: FileHandler) {
     }
 }
 
-private fun Route.removePhotoRoute(fileHandler: FileHandler) {
+private fun Route.removePhotoRoute() {
     delete("/photos/{fileName}") {
         try {
             val fileNameParam = call.parameters["filename"] ?: ""
@@ -254,7 +259,7 @@ private fun Route.removePhotoRoute(fileHandler: FileHandler) {
                 return@delete
             }
 
-            fileHandler.removePhoto(fileName)
+            FileHandler.removePhoto(fileName)
 
             call.respondText(text = "Ok", status = HttpStatusCode.OK)
         } catch (e: Exception) {
@@ -264,13 +269,13 @@ private fun Route.removePhotoRoute(fileHandler: FileHandler) {
     }
 }
 
-private fun Route.removePhotosRoute(fileHandler: FileHandler) {
+private fun Route.removePhotosRoute() {
     post("/photos/remove") {
         try {
             val fileNames = call.receive<List<String>>()
             if (fileNames.isEmpty()) throw Exception("Empty files list in removePhotosRoute")
 
-            fileHandler.removePhotos(fileNames)
+            FileHandler.removePhotos(fileNames)
 
             call.respondText(text = "Ok", status = HttpStatusCode.OK)
         } catch (e: Exception) {
@@ -280,7 +285,7 @@ private fun Route.removePhotosRoute(fileHandler: FileHandler) {
     }
 }
 
-private fun Route.getDeviceInfoRoute(fileHandler: FileHandler) {
+private fun Route.getDeviceInfoRoute() {
     get("/device/{deviceId}") {
         try {
             val deviceIdParam = call.parameters["deviceId"]
@@ -290,11 +295,53 @@ private fun Route.getDeviceInfoRoute(fileHandler: FileHandler) {
                 return@get
             }
 
-            val deviceInfo = fileHandler.getDeviceInfo(deviceId)
+            val deviceInfo = FileHandler.getDeviceInfo(deviceId)
 
             call.respond(message = deviceInfo, status = HttpStatusCode.OK)
         } catch (e: Exception) {
             application.log.error("getDeviceInfoRoute", e)
+            call.respondText(text = "Error: ${e.message}", status = HttpStatusCode.InternalServerError)
+        }
+    }
+}
+
+private fun Route.getDeviceServerSettingsRoute() {
+    get("/device/{deviceId}/settings") {
+        try {
+            val deviceIdParam = call.parameters["deviceId"]
+            val deviceId = deviceIdParam?.toLongOrNull()
+            if (deviceId == null) {
+                call.respondText(text = "Error: Wrong deviceId: $deviceIdParam", status = HttpStatusCode.BadRequest)
+                return@get
+            }
+
+            val settings = SettingsManager.loadSettings(deviceId) ?: throw Exception("empty device settings")
+
+            call.respond(message = settings, status = HttpStatusCode.OK)
+        } catch (e: Exception) {
+            application.log.error("getDeviceServerSettingsRoute", e)
+            call.respondText(text = "Error: ${e.message}", status = HttpStatusCode.InternalServerError)
+        }
+    }
+}
+
+private fun Route.updateDeviceServerSettingsRoute() {
+    post("/device/{deviceId}/settings") {
+        try {
+            val deviceIdParam = call.parameters["deviceId"]
+            val deviceId = deviceIdParam?.toLongOrNull()
+            if (deviceId == null) {
+                call.respondText(text = "Error: Wrong deviceId: $deviceIdParam", status = HttpStatusCode.BadRequest)
+                return@post
+            }
+
+            val settings = call.receive<DeviceServerSettings>()
+            SettingsManager.saveSettings(deviceId, settings)
+
+            val newSettings = SettingsManager.loadSettings(deviceId) ?: throw Exception("Cannot load settings from file")
+            call.respond(message = newSettings,  status = HttpStatusCode.OK)
+        } catch (e: Exception) {
+            application.log.error("updateDeviceServerSettingsRoute", e)
             call.respondText(text = "Error: ${e.message}", status = HttpStatusCode.InternalServerError)
         }
     }

@@ -1,13 +1,13 @@
 package com.example.julianczaja
 
-import com.example.julianczaja.Constants.DEFAULT_BASE_URL
-import com.example.julianczaja.Constants.DEFAULT_CLEANUP_INTERVAL_MS
-import com.example.julianczaja.Constants.DEFAULT_MAX_SPACE_MB
-import com.example.julianczaja.Constants.DEFAULT_PORT
 import com.example.julianczaja.plugins.configureLogging
 import com.example.julianczaja.plugins.configureRouting
 import com.example.julianczaja.plugins.configureSerialization
 import com.example.julianczaja.plugins.configureTemplating
+import com.example.julianczaja.utils.DEFAULT_BASE_URL
+import com.example.julianczaja.utils.DEFAULT_CLEANUP_INTERVAL_MS
+import com.example.julianczaja.utils.DEFAULT_MAX_SPACE_MB
+import com.example.julianczaja.utils.DEFAULT_PORT
 import io.ktor.server.application.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
@@ -28,15 +28,14 @@ fun main(args: Array<String>) {
 fun Application.module() {
     log.info("Starting with configuration:\n$Configuration")
 
-    val fileHandler = FileHandler()
-//    fileHandler.movePhotosToCorrectDirs()
-//    fileHandler.createMissingThumbnails()
+//    FileHandler.movePhotosToCorrectDirs()
+//    FileHandler.createMissingThumbnails()
 //    enableLogResponseBody(sendPipeline)
 
     configureSerialization()
     configureLogging()
     configureTemplating()
-    configureRouting(fileHandler)
+    configureRouting()
 }
 
 private fun parseArgs(args: Array<String>) {

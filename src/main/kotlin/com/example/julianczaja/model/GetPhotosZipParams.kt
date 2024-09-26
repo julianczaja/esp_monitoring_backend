@@ -1,4 +1,4 @@
-package com.example.julianczaja
+package com.example.julianczaja.model
 
 import kotlinx.serialization.Serializable
 

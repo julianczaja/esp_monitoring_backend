@@ -1,6 +1,8 @@
-package com.example.julianczaja
+package com.example.julianczaja.model
 
-import com.example.julianczaja.Constants.PHOTO_FILENAME_REGEX
+import com.example.julianczaja.utils.PHOTO_FILENAME_REGEX
+import com.example.julianczaja.utils.toDefaultString
+import com.example.julianczaja.utils.toLocalDateTime
 import java.time.LocalDate
 import java.time.LocalDateTime
 

@@ -1,7 +1,7 @@
-val ktor_version: String by project
-val logback_version: String by project
-val kotlin_version: String by project
-val kotlin_cli_version: String by project
+val ktorVersion: String by project
+val logbackVersion: String by project
+val kotlinVersion: String by project
+val kotlinCliVersion: String by project
 
 plugins {
     application
@@ -11,7 +11,7 @@ plugins {
 }
 
 group = "com.example.julianczaja"
-version = "0.6.4"
+version = "0.7.0"
 
 
 application {
@@ -37,14 +37,15 @@ tasks {
 }
 
 dependencies {
-    implementation("io.ktor:ktor-server-content-negotiation-jvm:$ktor_version")
-    implementation("io.ktor:ktor-server-core-jvm:$ktor_version")
-    implementation("io.ktor:ktor-serialization-kotlinx-json-jvm:$ktor_version")
-    implementation("io.ktor:ktor-server-call-logging-jvm:$ktor_version")
-    implementation("io.ktor:ktor-server-default-headers-jvm:$ktor_version")
-    implementation("io.ktor:ktor-server-netty:$ktor_version")
-    implementation("io.ktor:ktor-server-freemarker:$ktor_version")
-    implementation("ch.qos.logback:logback-classic:$logback_version")
-    implementation("org.jetbrains.kotlinx:kotlinx-cli:$kotlin_cli_version")
+    implementation("io.ktor:ktor-server-content-negotiation-jvm:$ktorVersion")
+    implementation("io.ktor:ktor-server-core-jvm:$ktorVersion")
+    implementation("io.ktor:ktor-serialization-kotlinx-json-jvm:$ktorVersion")
+    implementation("io.ktor:ktor-server-call-logging-jvm:$ktorVersion")
+    implementation("io.ktor:ktor-server-default-headers-jvm:$ktorVersion")
+    implementation("io.ktor:ktor-server-netty:$ktorVersion")
+    implementation("io.ktor:ktor-server-freemarker:$ktorVersion")
+    implementation("ch.qos.logback:logback-classic:$logbackVersion")
+    implementation("org.jetbrains.kotlinx:kotlinx-cli:$kotlinCliVersion")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm")
     implementation("com.sksamuel.scrimage:scrimage-core:4.2.0")
 }

@@ -1,10 +1,11 @@
-package com.example.julianczaja
+@file:Suppress("unused", "unused")
 
-import com.example.julianczaja.Constants.PHOTO_FILENAME_REGEX
-import com.example.julianczaja.Constants.projectPath
-import com.example.julianczaja.plugins.DeviceInfo
-import com.example.julianczaja.plugins.Photo
-import io.ktor.util.cio.*
+package com.example.julianczaja.utils
+
+import com.example.julianczaja.Configuration
+import com.example.julianczaja.model.DeviceFileName
+import com.example.julianczaja.model.DeviceInfo
+import com.example.julianczaja.model.Photo
 import io.ktor.utils.io.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -18,18 +19,17 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
-
-class FileHandler {
+object FileHandler {
 
     private val lastCleanupTimes: MutableMap<Long, Long> = ConcurrentHashMap()
-
     private val photoFileNameRegex = PHOTO_FILENAME_REGEX.toRegex()
-
     private val allDevicesPath = "$projectPath/photos"
 
     private fun getPhotoName(deviceId: Long) = "${deviceId}_$currentDateTimeString.jpeg"
 
-    private fun getDeviceDir(deviceId: Long) = "$allDevicesPath/$deviceId".replaceSeparators()
+    private fun getDeviceDirName(deviceId: Long) = "$allDevicesPath/$deviceId".replaceSeparators()
+
+    fun getDeviceDir(deviceId: Long) = File(getDeviceDirName(deviceId))
 
     private fun getPhotosDir(deviceId: Long, date: String) =
         "$allDevicesPath/$deviceId/$date".replaceSeparators()
@@ -65,7 +65,7 @@ class FileHandler {
     private fun getPhotoThumbnailUrl(fileName: String) = "${Configuration.fullUrl}/photo_thumbnail/$fileName"
 
     fun getDevicePhotosDatesFromDisk(deviceId: Long): List<String> {
-        val deviceDir = getDeviceDir(deviceId)
+        val deviceDir = getDeviceDirName(deviceId)
 
         if (!File(deviceDir).exists()) {
             throw UnknownDeviceException()
@@ -78,7 +78,7 @@ class FileHandler {
     }
 
     fun getDevicePhotosForDateFromDisk(deviceId: Long, date: LocalDate): List<Photo> {
-        val deviceDir = getDeviceDir(deviceId)
+        val deviceDir = getDeviceDirName(deviceId)
 
         if (!File(deviceDir).exists()) {
             throw UnknownDeviceException()
@@ -93,7 +93,7 @@ class FileHandler {
     }
 
     fun getDeviceLastPhotoFromDisk(deviceId: Long): Photo? {
-        val deviceDir = File(getDeviceDir(deviceId))
+        val deviceDir = File(getDeviceDirName(deviceId))
 
         if (!deviceDir.exists()) {
             throw UnknownDeviceException()
@@ -101,7 +101,7 @@ class FileHandler {
 
         deviceDir.listPhotoDateDirs()
             ?.sortedByDescending { it.name }
-            ?.first()
+            ?.firstOrNull()
             ?.let { newestDir ->
                 newestDir.listPhotoFiles()
                     ?.sortedByDescending { it.name }
@@ -119,8 +119,9 @@ class FileHandler {
             val deviceFileName = DeviceFileName.fromStringOrNull(fileName) ?: throw Exception("Can't parse $fileName")
 
             val byteArray = channel.toByteArray()
+            val shouldCheckMostlyBlack = SettingsManager.loadSettings(deviceId)?.detectMostlyBlackPhotos ?: false
 
-            if (PhotoUtils.isPhotoMostlyBlack(byteArray)) {
+            if (shouldCheckMostlyBlack && PhotoUtils.isPhotoMostlyBlack(byteArray)) {
                 println("savePhotoFromChannel: photo is mostly black, skipping")
                 return@withContext
             }
@@ -152,7 +153,7 @@ class FileHandler {
             return
         }
 
-        val deviceDir = File(getDeviceDir(deviceId))
+        val deviceDir = File(getDeviceDirName(deviceId))
         val maxSizeBytes = Configuration.maxSpaceMb * 1024 * 1024
 
         var totalPhotosSize = 0L
@@ -215,7 +216,7 @@ class FileHandler {
     }
 
     fun removePhoto(fileName: DeviceFileName) {
-        val deviceDir = File(getDeviceDir(fileName.deviceId))
+        val deviceDir = File(getDeviceDirName(fileName.deviceId))
 
         deviceDir.listPhotoDateDirs()
             ?.first { it.name == fileName.date.toDefaultString() }
@@ -234,7 +235,7 @@ class FileHandler {
             .groupBy { it.deviceId }
             .map { it.key to it.value.toString() }
             .forEach { (deviceId, deviceFileNames) ->
-                File(getDeviceDir(deviceId))
+                File(getDeviceDirName(deviceId))
                     .walk()
                     .filter { it.name in deviceFileNames }
                     .forEach { it.delete() }
@@ -242,7 +243,7 @@ class FileHandler {
     }
 
     fun getDeviceInfo(deviceId: Long): DeviceInfo {
-        val deviceDir = File(getDeviceDir(deviceId))
+        val deviceDir = File(getDeviceDirName(deviceId))
 
         val averageSumCount = 10
         var usedSpace = 0L
@@ -255,10 +256,10 @@ class FileHandler {
         deviceDir.listPhotoDateDirs()
             ?.sortedByDescending { it.name }
             ?.also { dirs ->
-                val newestDir = dirs.first()
-                val oldestDir = dirs.last()
+                val newestDir = dirs.firstOrNull()
+                val oldestDir = dirs.lastOrNull()
 
-                newestDir.listPhotoFiles()
+                newestDir?.listPhotoFiles()
                     ?.sortedByDescending { it.name }
                     ?.also { sorted ->
                         sorted.firstOrNull()?.let { newestPhotoFile ->
@@ -271,10 +272,10 @@ class FileHandler {
                         averagePhotoSize = lastPhotos.sumOf { it.length() } / lastPhotos.size
                     }
 
-                oldestDir.listPhotoFiles()
+                oldestDir?.listPhotoFiles()
                     ?.sortedBy { it.name }
                     ?.also { sorted ->
-                        sorted.first()?.let { oldestPhotoFile ->
+                        sorted.firstOrNull()?.let { oldestPhotoFile ->
                             oldestPhotoTimestamp = getTimestampFromPhotoFileName(oldestPhotoFile.name)
                         }
                     }

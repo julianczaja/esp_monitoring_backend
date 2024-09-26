@@ -1,10 +1,16 @@
 package com.example.julianczaja
 
+import com.example.julianczaja.utils.DEFAULT_BASE_URL
+import com.example.julianczaja.utils.DEFAULT_CLEANUP_INTERVAL_MS
+import com.example.julianczaja.utils.DEFAULT_MAX_SPACE_MB
+import com.example.julianczaja.utils.DEFAULT_PORT
+
+
 object Configuration {
-    var baseUrl = Constants.DEFAULT_BASE_URL
-    var port = Constants.DEFAULT_PORT
-    var maxSpaceMb = Constants.DEFAULT_MAX_SPACE_MB
-    var cleanupIntervalMs = Constants.DEFAULT_CLEANUP_INTERVAL_MS
+    var baseUrl = DEFAULT_BASE_URL
+    var port = DEFAULT_PORT
+    var maxSpaceMb = DEFAULT_MAX_SPACE_MB
+    var cleanupIntervalMs = DEFAULT_CLEANUP_INTERVAL_MS
 
     val fullUrl
         get() = "http://$baseUrl:$port"

@@ -1,4 +1,4 @@
-package com.example.julianczaja
+package com.example.julianczaja.utils
 
 import io.ktor.http.*
 import io.ktor.server.response.*
