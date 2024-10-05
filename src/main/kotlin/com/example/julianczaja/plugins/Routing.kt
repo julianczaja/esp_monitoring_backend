@@ -152,13 +152,14 @@ fun Route.getPhotosByNamesRoute() {
             val params = call.receive<GetPhotosZipParams>()
             if (params.fileNames.isEmpty()) throw Exception("Empty files list in PhotosZipParams")
 
-            val zipBytes = FileHandler.getPhotosZipFile(params.fileNames, params.isHighQuality)
+            val photosFiles = FileHandler.getPhotosFilesForZip(params.fileNames, params.isHighQuality)
 
             call.response.addFileNameContentDescriptionHeader("photos.zip")
-            call.respondBytes(
-                bytes = zipBytes,
+            call.respondOutputStream(
                 contentType = ContentType.Application.Zip,
-                status = HttpStatusCode.OK
+                producer = {
+                    FileHandler.sendPhotosZipToStream(photosFiles, this)
+                }
             )
         } catch (e: Exception) {
             application.log.error("getPhotosByNamesRoute", e)

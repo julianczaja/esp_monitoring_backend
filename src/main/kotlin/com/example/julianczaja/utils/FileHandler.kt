@@ -9,8 +9,8 @@ import com.example.julianczaja.model.Photo
 import io.ktor.utils.io.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.io.ByteArrayOutputStream
 import java.io.File
+import java.io.OutputStream
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.time.LocalDate
@@ -37,7 +37,21 @@ object FileHandler {
     private fun getPhotosThumbnailsDir(deviceId: Long, date: String) =
         "$allDevicesPath/$deviceId/$date/thumbnails".replaceSeparators()
 
-    fun getPhotosZipFile(filesNames: List<String>, isHighQuality: Boolean): ByteArray {
+    fun sendPhotosZipToStream(files: List<File>, outputStream: OutputStream) {
+        ZipOutputStream(outputStream).use { zipOut ->
+            files.forEach { file ->
+                zipOut.putNextEntry(ZipEntry(file.name))
+                file.inputStream()
+                    .buffered(8_192)
+                    .use { input ->
+                        input.copyTo(zipOut)
+                    }
+                zipOut.closeEntry()
+            }
+        }
+    }
+
+    fun getPhotosFilesForZip(filesNames: List<String>, isHighQuality: Boolean): List<File> {
         val deviceFilesNames = filesNames.mapNotNull { DeviceFileName.fromStringOrNull(it) }
         val files = deviceFilesNames.mapNotNull { fileName ->
             when {
@@ -45,7 +59,7 @@ object FileHandler {
                 else -> getPhotoThumbnailFile(fileName).takeIf { it.exists() }
             }
         }
-        return createZip(files)
+        return files
     }
 
     fun getPhotoFile(fileName: DeviceFileName): File {
@@ -371,21 +385,6 @@ object FileHandler {
     } catch (e: Exception) {
         println("getTimestampFromPhotoFileName error: can't convert '$fileName'")
         null
-    }
-
-    private fun createZip(files: List<File>): ByteArray {
-        val outputStream = ByteArrayOutputStream()
-        ZipOutputStream(outputStream).use { zipOut ->
-            files.forEach { file ->
-                val zipEntry = ZipEntry(file.name)
-                zipOut.putNextEntry(zipEntry)
-                file.inputStream().use { input ->
-                    input.copyTo(zipOut)
-                }
-                zipOut.closeEntry()
-            }
-        }
-        return outputStream.toByteArray()
     }
 
     private fun File.listPhotoDateDirs() = this.listFiles { file -> file.isDirectory && file.name.count() == 8 }
