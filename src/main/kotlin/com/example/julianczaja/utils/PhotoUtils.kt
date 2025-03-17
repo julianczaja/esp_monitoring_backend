@@ -69,7 +69,7 @@ object PhotoUtils {
                 "unknown"
             }
         }
-    } catch (e: Exception) {
+    } catch (_: Exception) {
         "unknown"
     }
 

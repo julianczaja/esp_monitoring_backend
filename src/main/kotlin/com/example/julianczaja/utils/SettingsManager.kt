@@ -1,7 +1,6 @@
 package com.example.julianczaja.utils
 
 import com.example.julianczaja.model.DeviceServerSettings
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.File
 import java.util.concurrent.locks.ReentrantLock

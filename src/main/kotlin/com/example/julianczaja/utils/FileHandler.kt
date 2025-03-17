@@ -1,4 +1,4 @@
-@file:Suppress("unused", "unused")
+@file:Suppress("unused")
 
 package com.example.julianczaja.utils
 
@@ -114,12 +114,10 @@ object FileHandler {
         }
 
         deviceDir.listPhotoDateDirs()
-            ?.sortedByDescending { it.name }
-            ?.firstOrNull()
+            ?.maxByOrNull { it.name }
             ?.let { newestDir ->
                 newestDir.listPhotoFiles()
-                    ?.sortedByDescending { it.name }
-                    ?.firstOrNull()
+                    ?.maxByOrNull { it.name }
                     ?.toPhoto()
                     ?.let { photo -> return photo }
             }
