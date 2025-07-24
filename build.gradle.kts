@@ -5,13 +5,13 @@ val kotlinCliVersion: String by project
 
 plugins {
     application
-    kotlin("jvm") version "2.1.10"
-    id("io.ktor.plugin") version "3.1.1"
-    id("org.jetbrains.kotlin.plugin.serialization") version "2.1.10"
+    kotlin("jvm") version "2.2.0"
+    id("io.ktor.plugin") version "3.2.2"
+    id("org.jetbrains.kotlin.plugin.serialization") version "2.2.0"
 }
 
 group = "com.example.julianczaja"
-version = "0.7.2"
+version = "0.7.3"
 
 
 application {
@@ -46,6 +46,6 @@ dependencies {
     implementation("io.ktor:ktor-server-freemarker:$ktorVersion")
     implementation("ch.qos.logback:logback-classic:$logbackVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-cli:$kotlinCliVersion")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.10.1")
-    implementation("com.sksamuel.scrimage:scrimage-core:4.3.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.10.2")
+    implementation("com.sksamuel.scrimage:scrimage-core:4.3.3")
 }
